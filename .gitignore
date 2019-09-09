@@ -1,8 +1,7 @@
 devel/
 logs/
 doc/
-build/*
-mpc_to_line/
+build/
 bin/
 lib/
 msg_gen/
