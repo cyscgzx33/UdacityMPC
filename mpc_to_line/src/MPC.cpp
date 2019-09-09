@@ -11,8 +11,8 @@ using Eigen::VectorXd;
 /**
  * TODO: Set N and dt
  */
-size_t N = ? ;
-double dt = ? ;
+size_t N = 50;
+double dt = 0.02;
 
 // This value assumes the model presented in the classroom is used.
 //
@@ -117,12 +117,12 @@ MPC::~MPC() {}
 std::vector<double> MPC::Solve(const VectorXd &x0, const VectorXd &coeffs) {
   typedef CPPAD_TESTVECTOR(double) Dvector;
 
-  double x = x0[0];
-  double y = x0[1];
-  double psi = x0[2];
-  double v = x0[3];
-  double cte = x0[4];
-  double epsi = x0[5];
+  double x    =  x0[0];
+  double y    =  x0[1];
+  double psi  =  x0[2];
+  double v    =  x0[3];
+  double cte  =  x0[4];
+  double epsi =  x0[5];
 
   // number of independent variables
   // N timesteps == N - 1 actuations
@@ -137,12 +137,12 @@ std::vector<double> MPC::Solve(const VectorXd &x0, const VectorXd &coeffs) {
     vars[i] = 0.0;
   }
   // Set the initial variable values
-  vars[x_start] = x;
-  vars[y_start] = y;
-  vars[psi_start] = psi;
-  vars[v_start] = v;
-  vars[cte_start] = cte;
-  vars[epsi_start] = epsi;
+  vars[x_start]     =  x;
+  vars[y_start]     =  y;
+  vars[psi_start]   =  psi;
+  vars[v_start]     =  v;
+  vars[cte_start]   =  cte;
+  vars[epsi_start]  =  epsi;
 
   // Lower and upper limits for x
   Dvector vars_lowerbound(n_vars);
