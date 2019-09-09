@@ -57,10 +57,30 @@ class FG_eval {
 
     // Reference State Cost
     /**
-     * TODO: Define the cost related the reference state and
-     *   anything you think may be beneficial.
+     * Define the cost related the reference and the state in 3 parts:
      */
-    fg[0] += sum( (cte - cte_ref)^2 + (epsi - epsi_ref)^2 );
+
+    // Part I: reference part
+    for (int t = 0; t < N; t++)
+    {
+      fg[0] += CppAD::pow( vars[cte_start + t], 2 );  // cte has a (const) reference value equals to 0
+      fg[0] += CppAD::pow( vars[epsi_start + t], 2 ); // epsi has a (const) reference value equals to 0
+      fg[0] += CppAD::pow( vars[v_start + t] - ref_v , 2 ); // v has a (const) reference value equals to ref_v
+    }
+
+    // Part II: actuator part
+    for (int t = 0; t < N - 1; t++)
+    {
+      fg[0] += CppAD::pow( vars[delta_start + t], 2 );  
+      fg[0] += CppAD::pow( vars[a_start + t], 2 );
+    }
+
+    // Part III: actuator changing rate part
+    for (int t = 0; t < N - 2; t++)
+    {
+      fg[0] += CppAD::pow( vars[delta_start + t + 1] - vars[delta_start + t], 2 );
+      fg[0] += CppAD::pow( vars[a_start + t + 1] - vars[a_start + t], 2 );
+    }
 
     //
     // Setup Constraints
@@ -72,12 +92,12 @@ class FG_eval {
     // We add 1 to each of the starting indices due to cost being located at
     // index 0 of `fg`.
     // This bumps up the position of all the other values.
-    fg[1 + x_start] = vars[x_start];
-    fg[1 + y_start] = vars[y_start];
-    fg[1 + psi_start] = vars[psi_start];
-    fg[1 + v_start] = vars[v_start];
-    fg[1 + cte_start] = vars[cte_start];
-    fg[1 + epsi_start] = vars[epsi_start];
+    fg[1 + x_start]     =  vars[x_start];
+    fg[1 + y_start]     =  vars[y_start];
+    fg[1 + psi_start]   =  vars[psi_start];
+    fg[1 + v_start]     =  vars[v_start];
+    fg[1 + cte_start]   =  vars[cte_start];
+    fg[1 + epsi_start]  =  vars[epsi_start];
 
     // The rest of the constraints
     for (int t = 1; t < N; ++t) {
@@ -85,23 +105,29 @@ class FG_eval {
        *   Grab the rest of the states at t+1 and t.
        *   We have given you parts of these states below.
        */
-      AD<double> x1      =  vars[x_start + t];
-      AD<double> y1      =  vars[y_start + t];
-      AD<double> psi1    =  vars[psi_start + t];
-      AD<double> v1      =  vars[v_start + t];
-      AD<double> cte1    =  vars[cte_start + t];
-      AD<double> epsi1   =  vars[epsi_start + t];
-      AD<double> delta1  =  vars[delta_start + t];
-      AD<double> a1      =  vars[a_start + t];
 
-      AD<double> x0      =  vars[x_start + t - 1];
-      AD<double> y0      =  vars[y_start + t];
-      AD<double> psi0    =  vars[psi_start + t - 1];
-      AD<double> v0      =  vars[v_start + t - 1];
-      AD<double> cte0    =  vars[cte_start + t - 1];
-      AD<double> epsi0   =  vars[epsi_start + t - 1];
-      AD<double> delta0  =  vars[delta_start + t -1];
-      AD<double> a0      =  vars[a_start + t - 1];
+      // consider states at time t and t + 1
+      AD<double> x1        =  vars[x_start + t];
+      AD<double> y1        =  vars[y_start + t];
+      AD<double> psi1      =  vars[psi_start + t];
+      AD<double> v1        =  vars[v_start + t];
+      AD<double> cte1      =  vars[cte_start + t];
+      AD<double> epsi1     =  vars[epsi_start + t];
+
+      AD<double> x0        =  vars[x_start + t - 1];
+      AD<double> y0        =  vars[y_start + t];
+      AD<double> psi0      =  vars[psi_start + t - 1];
+      AD<double> v0        =  vars[v_start + t - 1];
+      AD<double> cte0      =  vars[cte_start + t - 1];
+      AD<double> epsi0     =  vars[epsi_start + t - 1];
+
+      // only consider the actuators at time t
+      AD<double> delta0    =  vars[delta_start + t -1];
+      AD<double> a0        =  vars[a_start + t - 1];
+
+      // generate some assistant variables
+      AD<double> f_x0      =  coeffs[1] * x0 + coeffs[0];
+      AD<double> psi_des0  =  CppAD::atan( coeffs[1] );
 
       // Here's `x` to get you started.
       // The idea here is to constraint this value to be 0.
@@ -116,9 +142,8 @@ class FG_eval {
       fg[1 + y_start + t]     =  y1 - (y0 + v0 * CppAD::sin(psi0) * dt);
       fg[1 + psi_start + t]   =  psi1 - (psi0 + v0 / Lf * delta0 * dt);
       fg[1 + v_start + t]     =  v1 - (v0 + a0 * dt);
-      fg[1 + cte_start + t]   =  cte1 - (f(x0) - y0 + v0 * CppAD::sin(epsi0) * dt); // what is f wrt f(x0)?
-      fg[1 + epsi_start + t]  =  epsi1 - (psi0 - psi_ref0 + v0 / Lf * delta0 * dt); // what is psi_ref0?
-
+      fg[1 + cte_start + t]   =  cte1 - (f_x0 - y0 + v0 * CppAD::sin(epsi0) * dt);
+      fg[1 + epsi_start + t]  =  epsi1 - (psi0 - psi_des0 + v0 / Lf * delta0 * dt);
     }
   }
 };
