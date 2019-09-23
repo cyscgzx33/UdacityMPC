@@ -15,34 +15,22 @@ int main() {
   CustomMPC mpc;
   int iters = 500;
 
-  VectorXd ptsx(2);
-  VectorXd ptsy(2);
-  ptsx << -100, 100;
-  ptsy << -10, 10; // -1, -1
-
-  /**
-   * fit a polynomial to the above x and y coordinates
-   * since the polynomial is fitted to a straight line, order 1 is sufficient
-   */
-  auto coeffs = polyfit(ptsx, ptsy, 1);
-
-  // NOTE: free feel to play around with these
-  double x = -100;
-  double y = 10;
-  double psi = 0;
+  double x = 288.0;
+  double y = -178.0;
+  double psi = 2.0;
   double v = 39;
   /**
    * calculate the cross track error
    * since the cross track error is the perpendicular dist from point to ref
    * and the stright line is a horizontal one:
    */
-  double cte = polyeval(coeffs, x) - y;
+  double cte = sqrt( pow(x - 287.39, 2) + pow(y - (-178.82), 2) );
   /**
    * calculate the orientation error
    * due to the sign starting at 0, the orientation error is -f'(x)
    * derivative of ( coeffs[1] * x + coeffs[0] ) -> coeffs[1]
    */
-  double epsi = psi - atan( coeffs[1] );
+  double epsi = psi - 1.9603;
 
   VectorXd state(6);
   state << x, y, psi, v, cte, epsi;
@@ -59,7 +47,7 @@ int main() {
   for (size_t i = 0; i < iters; ++i) {
     cout << "Iteration " << i << endl;
 
-    auto vars = mpc.Solve(state, coeffs);
+    auto vars = mpc.Solve(state);
 
     x_vals.push_back(vars[0]);
     y_vals.push_back(vars[1]);
