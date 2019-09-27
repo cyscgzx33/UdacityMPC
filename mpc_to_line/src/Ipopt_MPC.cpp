@@ -1,11 +1,8 @@
-#include "MPC.h"
+#include "Ipopt_MPC.h"
 #include <math.h>
-#include <cppad/cppad.hpp>
-#include <cppad/ipopt/solve.hpp>
 #include <vector>
 #include "Eigen-3.3/Eigen/Core"
 
-using CppAD::AD;
 using Eigen::VectorXd;
 
 /**
@@ -27,7 +24,7 @@ double dt = 0.02;
 const double Lf = 2.67;
 
 // NOTE: feel free to play around with this or do something completely different
-double ref_v = 40;
+double ref_v = 20;
 
 // The solver takes all the state variables and actuator
 // variables in a singular vector. Thus, we should to establish
@@ -44,8 +41,27 @@ size_t a_start = delta_start + N - 1;
 class FG_eval {
  public:
   VectorXd coeffs;
+  // CppAD::vector<AD<double>> cl_x_;
+  // CppAD::vector<AD<double>> cl_y_;
+  // CppAD::vector<AD<double>> cl_phi_;
+  std::vector<double> cl_x_;
+  std::vector<double> cl_y_;
+  std::vector<double> cl_phi_;
+
   // Coefficients of the fitted polynomial.
   FG_eval(VectorXd coeffs) { this->coeffs = coeffs; }
+  FG_eval(std::vector<double>& cl_x, std::vector<double>& cl_y, std::vector<double>& cl_phi) 
+  { 
+    // for (int i = 0; i < cl_phi.size; i++)
+    // {
+    //   cl_x_.push_back( cl_x[i] );
+    //   cl_y_.push_back( cl_y[i] );
+    //   cl_phi_.push_back( cl_phi[i] );
+    // }
+    cl_x_ = cl_x;
+    cl_y_ = cl_y;
+    cl_phi_ = cl_phi;
+  }
 
   typedef CPPAD_TESTVECTOR(AD<double>) ADvector;
   // `fg` is a vector containing the cost and constraints.
@@ -126,8 +142,8 @@ class FG_eval {
       AD<double> a0        =  vars[a_start + t - 1];
 
       // generate some assistant variables
-      AD<double> f_x0      =  coeffs[1] * x0 + coeffs[0];
-      AD<double> psi_des0  =  CppAD::atan( coeffs[1] );
+      // AD<double> f_x0      =  coeffs[1] * x0 + coeffs[0];
+      // AD<double> psi_des0  =  CppAD::atan( coeffs[1] );
 
       // Here's `x` to get you started.
       // The idea here is to constraint this value to be 0.
@@ -140,8 +156,6 @@ class FG_eval {
        *  y_[t+1]   =  y[t] + v[t] * sin(psi[t]) * dt
        *  psi_[t+1] =  psi[t] + v[t] / Lf * delta[t] * dt
        *  v_[t+1]   =  v[t] + a[t] * dt
-       *  cte[t+1]  =  f(x[t]) - y[t] + v[t] * sin(epsi[t]) * dt
-       *  epsi[t+1] =  psi[t] - psides[t] + v[t] * delta[t] / Lf * dt
        * 
        * */
       
@@ -151,24 +165,48 @@ class FG_eval {
       /**
        *   Setup the rest of the model constraints
        */
+
+      // calculate cte & epsi based on (x, y, psi) and (cl_x, cl_y, cl_phi)
+      std::vector<AD<double>> dist(cl_phi_.size(), 0);
+      std::vector<int> ind( cl_phi_.size() );
+      for (int i = 0; i < cl_phi_.size(); i++)
+      {
+        dist[i] = (x1 - cl_x_[i]) * (x1 - cl_x_[i]) + (y1 - cl_y_[i]) * (y1 - cl_y_[i]);
+        ind[i] = i;
+      }
+      CppAD::index_sort(dist, ind);
+      int closest_ind = ind[0];
+
       fg[1 + x_start + t]     =  x1 - (x0 + v0 * CppAD::cos(psi0) * dt);
       fg[1 + y_start + t]     =  y1 - (y0 + v0 * CppAD::sin(psi0) * dt);
       fg[1 + psi_start + t]   =  psi1 - (psi0 + v0 / Lf * delta0 * dt);
       fg[1 + v_start + t]     =  v1 - (v0 + a0 * dt);
-      fg[1 + cte_start + t]   =  cte1 - (f_x0 - y0 + v0 * CppAD::sin(epsi0) * dt);
-      fg[1 + epsi_start + t]  =  epsi1 - (psi0 - psi_des0 + v0 / Lf * delta0 * dt);
+      fg[1 + cte_start + t]   =  cte1 - CppAD::sqrt( CppAD::pow(x1 - cl_x_[closest_ind], 2) + CppAD::pow(y1 - cl_y_[closest_ind], 2) );
+      fg[1 + epsi_start + t]  =  epsi1 - psi1 + cl_phi_[closest_ind];
     }
   }
 };
 
 //
-// MPC class definition
+// IpoptMPC class definition
 //
 
-MPC::MPC() {}
-MPC::~MPC() {}
+IpoptMPC::IpoptMPC()
+{
+  readRoadmapFromCSV("/home/honda/git/UdacityMPC/mpc_to_line/roadmap.csv");
 
-std::vector<double> MPC::Solve(const VectorXd &x0, const VectorXd &coeffs) {
+  // parse waypoints_ to center line (x, y, phi)
+  for (auto& wp : waypoints_)
+  {
+    cl_x_.push_back( wp[4] );
+    cl_y_.push_back( wp[5] );
+    cl_phi_.push_back( atan(wp[6]) ); // slope to direction angle in [rad]
+  }
+}
+IpoptMPC::~IpoptMPC() {}
+
+// std::vector<double> CustomMPC::Solve(const VectorXd& x0, const VectorXd& coeffs) {
+std::vector<double> IpoptMPC::Solve(const VectorXd& x0) {
   typedef CPPAD_TESTVECTOR(double) Dvector;
 
   double x    =  x0[0];
@@ -248,7 +286,7 @@ std::vector<double> MPC::Solve(const VectorXd &x0, const VectorXd &coeffs) {
   constraints_upperbound[epsi_start] = epsi;
 
   // Object that computes objective and constraints
-  FG_eval fg_eval(coeffs);
+  FG_eval fg_eval(cl_x_, cl_y_, cl_phi_);
 
   // options
   std::string options;
