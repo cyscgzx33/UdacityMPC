@@ -133,6 +133,9 @@ class IpoptMPC : public Ipopt::TNLP
         waypoints_.push_back(wp);
     }
 
+    /** Other variables that assist the MPC problem formulation **/
+    std::vector<double> x0_; // initial state variables
+
 };
 
 #endif  // IPOPT_MPC_H
