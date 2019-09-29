@@ -33,7 +33,7 @@ class IpoptMPC : public Ipopt::TNLP
     //@{
     /** Method to return some info about the nlp **/
     virtual bool get_nlp_info(Ipopt::Index& n, Ipopt::Index& m, Ipopt::Index& nnz_jac_g,
-                              Ipopt::Index& nnz_h_lag, TNLP::IndexStyleEnum& index_stle);
+                              Ipopt::Index& nnz_h_lag, TNLP::IndexStyleEnum& index_style);
 
     /** Method to return the bounds for my problem **/
     virtual bool get_bounds_info(Ipopt::Index n, Ipopt::Number* x_l, Ipopt::Number* x_u,
