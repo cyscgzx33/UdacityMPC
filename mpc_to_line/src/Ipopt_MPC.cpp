@@ -161,15 +161,42 @@ bool IpoptMPC::eval_f(Ipopt::Index n, const Ipopt::Number* x, bool new_x, Ipopt:
    * [Simple Reference]
    * obj_value = x[0] * x[3] * (x[0] + x[1] + x[2]) + x[2];
    */
+  obj_value = 0.0;
+  for (int i = 0; i < N; i++)
+  {
+    std::vector<double> dist(map_sz_, 0.0);
+
+    /* find the closest segment to the current position */
+    // construct the dist vector at each step
+    for (int j = 0; j < map_sz_; j++)
+      dist[j] = pow( x[x_start + i] - cl_x_[j], 2 ) + pow( x[y_start + i] - cl_y_[j], 2 );
+    // find the closest element
+    auto closest = std::min_element( dist.begin(), dist.end() );
+    int closest_idx = closest - dist.begin();
+
+    /* contribute to obj_value */
+    // Part I: cross-track error (CTE)
+    obj_value += dist[closest_idx];
+    // Part II: heading angle error
+    obj_value += pow( x[psi_start + i] - cl_phi_[closest_idx], 2 );
+    // Part III: longitudinal velocity error
+    obj_value += pow( x[v_start + i] - ref_v, 2 );
+    if (i < N - 1)
+    {
+      // Part IV: actuator cost
+      obj_value += pow( x[delta_start + i], 2 ) + pow( x[a_start + i], 2 );
+      // part V (TODO): actuator changing rate limit
+    }
+  }
 
   return true;
 }
 
 // return the gradient of the objective function grad_{x} f(x)
 bool IpoptMPC::eval_grad_f(Ipopt::Index n, const Ipopt::Number* x, bool new_x, Ipopt::Number* grad_f)
-{ 
+{
   // assert variable numbers
-  assert(n == 6 * N - 2); // ???
+  assert(n == 6 * N - 2);
 
   /**
    * [Simple Reference]
@@ -179,20 +206,68 @@ bool IpoptMPC::eval_grad_f(Ipopt::Index n, const Ipopt::Number* x, bool new_x, I
    * grad_f[3] = x[0] * (x[0] + x[1] + x[2]);
    */
 
+  for (int i = 0; i < N; i++)
+  {
+    std::vector<double> dist(map_sz_, 0.0);
+
+    /* find the closest segment to the current position */
+    // construct the dist vector at each step
+    for (int j = 0; j < map_sz_; j++)
+      dist[j] = pow( x[x_start + i] - cl_x_[j], 2 ) + pow( x[y_start + i] - cl_y_[j], 2 );
+    // find the closest element
+    auto closest = std::min_element( dist.begin(), dist.end() );
+    int closest_idx = closest - dist.begin();
+
+    /* contribute to grad_f */
+    // Part I: cross-track error (CTE)
+    grad_f[x_start + i]   =  2 * ( x[x_start + i] - cl_x_[closest_idx] );
+    grad_f[y_start + i]   =  2 * ( x[y_start + i] - cl_y_[closest_idx] );
+    // Part II: heading angle error
+    grad_f[psi_start + i] =  2 * ( x[psi_start + i] - cl_phi_[closest_idx] );
+    // Part III: longitudinal velocity error
+    grad_f[v_start + i]   =  2 * ( x[v_start + i] - ref_v );
+    if (i < N - 1)
+    {
+      // Part IV: actuator cost
+      grad_f[delta_start + i] =  2 * x[delta_start + i];
+      grad_f[a_start + i]     =  2 * x[a_start + i];
+      // part V (TODO): actuator changing rate limit
+    }
+  }
+
   return true;
 }
 
 // return the value of the constraints: g(x)
 bool IpoptMPC::eval_g(Ipopt::Index n, const Ipopt::Number* x, bool new_x, Ipopt::Index m, Ipopt::Number* g)
 {
-  assert(n == 6 * N - 2); // ???
-  assert(m == 6 * N - 6); // ???
+  assert(n == 6 * N - 2);
+  assert(m == 4 * N - 4);
 
   /**
    *  [Simple Reference]
    *  g[0] = x[0] * x[1] * x[2] * x[3];
    *  g[1] = x[0]*x[0] + x[1]*x[1] + x[2]*x[2] + x[3]*x[3];
    */
+
+  /** 
+   *  [Description]
+   *  Recall the equations for the kinematics model:
+   *  
+   *  x_[t+1]   =  x[t] + v[t] * cos(psi[t]) * dt
+   *  y_[t+1]   =  y[t] + v[t] * sin(psi[t]) * dt
+   *  psi_[t+1] =  psi[t] + v[t] / Lf * delta[t] * dt
+   *  v_[t+1]   =  v[t] + a[t] * dt
+   * 
+   * */
+
+  for (int i = 0; i < N - 1; i++)
+  {
+    g[x_start + i]   =  x[x_start + i]   + x[v_start + i] * cos( x[psi_start + i] ) * dt  - x[x_start + i + 1]   ;
+    g[y_start + i]   =  x[y_start + i]   + x[v_start + i] * sin( x[psi_start + i] ) * dt  - x[x_start + i + 1]   ;
+    g[psi_start + i] =  x[psi_start + i] + x[v_start + i] / x[delta_start + i] * dt       - x[psi_start + i + 1] ;
+    g[v_start + i]   =  x[v_start + i]   + x[a_start + i] * dt                            - x[v_start + i + 1]   ;
+  }
 
   return true;
 }

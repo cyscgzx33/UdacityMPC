@@ -134,7 +134,12 @@ class IpoptMPC : public Ipopt::TNLP
     }
 
     /** Other variables that assist the MPC problem formulation **/
-    std::vector<double> x0_; // initial state variables
+    std::vector<double> x0_;                      // initial state variables
+    int map_sz_;                                  // size of segments of the map
+    std::vector<std::vector<double>> waypoints_;  // stored waypoints info from csv
+    std::vector<double> cl_x_;                    // center line x
+    std::vector<double> cl_y_;                    // center line y
+    std::vector<double> cl_phi_;                  // center line direction phi
 
 };
 
