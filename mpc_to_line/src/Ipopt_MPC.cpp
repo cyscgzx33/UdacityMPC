@@ -2,7 +2,6 @@
 #include <math.h>
 #include <vector>
 #include "Eigen-3.3/Eigen/Core"
-#include "IpIpoptApplication.hpp"
 
 
 /** A bunch of global variables **/

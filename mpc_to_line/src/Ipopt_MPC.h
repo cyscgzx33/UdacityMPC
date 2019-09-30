@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <IpTNLP.hpp>
+#include "IpIpoptApplication.hpp"
 
 /** C++ MPC Implementation NLP for interfacing a problem with IPOPT.
  *  IpoptMPC implements a C++ example of using MPC control strategy
