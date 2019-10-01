@@ -41,7 +41,18 @@ size_t a_start = delta_start + N - 1;
 //@}
 
 // constructor
-IpoptMPC::IpoptMPC() {}
+IpoptMPC::IpoptMPC() : state_sol_(4, 0.0), actuator_sol_(2, 0.0) // init state & actuator sol vector
+{
+  readRoadmapFromCSV("/home/honda/git/UdacityMPC/mpc_to_line/roadmap.csv");
+
+  // parse waypoints_ to center line (x, y, phi)
+  for (auto& wp : waypoints_)
+  {
+    cl_x_.push_back( wp[4] );
+    cl_y_.push_back( wp[5] );
+    cl_phi_.push_back( atan(wp[6]) ); // slope to direction angle in [rad]
+  }
+}
 
 // destructor
 IpoptMPC::~IpoptMPC() {}
@@ -391,26 +402,34 @@ void IpoptMPC::finalize_solution(Ipopt::SolverReturn status,
   // here is where we would store the solution to variables, or write to a file, etc
   // so we could use the solution.
 
+  // parse the solution to each state vector & actuator vector
+  state_sol_[0]     =  x[x_start + 1];
+  state_sol_[1]     =  x[y_start + 1];
+  state_sol_[2]     =  x[psi_start + 1];
+  state_sol_[3]     =  x[v_start + 1];
+  actuator_sol_[0]  =  x[delta_start];
+  actuator_sol_[1]  =  x[a_start];
+
   // [Simple reference]
   // For this example, we write the solution to the console
-  /* std::cout << std::endl << std::endl << "Solution of the primal variables, x" << std::endl;
-  for (Ipopt::Index i=0; i<n; i++) {
-     std::cout << "x[" << i << "] = " << x[i] << std::endl;
-  }
+  // std::cout << std::endl << std::endl << "Solution of the primal variables, x" << std::endl;
+  // for (Ipopt::Index i=0; i<n; i++) {
+  //    std::cout << "x[" << i << "] = " << x[i] << std::endl;
+  // }
 
-  std::cout << std::endl << std::endl << "Solution of the bound multipliers, z_L and z_U" << std::endl;
-  for (Ipopt::Index i=0; i<n; i++) {
-    std::cout << "z_L[" << i << "] = " << z_L[i] << std::endl;
-  }
-  for (Ipopt::Index i=0; i<n; i++) {
-    std::cout << "z_U[" << i << "] = " << z_U[i] << std::endl;
-  }
+  // std::cout << std::endl << std::endl << "Solution of the bound multipliers, z_L and z_U" << std::endl;
+  // for (Ipopt::Index i=0; i<n; i++) {
+  //   std::cout << "z_L[" << i << "] = " << z_L[i] << std::endl;
+  // }
+  // for (Ipopt::Index i=0; i<n; i++) {
+  //   std::cout << "z_U[" << i << "] = " << z_U[i] << std::endl;
+  // }
 
-  std::cout << std::endl << std::endl << "Objective value" << std::endl;
-  std::cout << "f(x*) = " << obj_value << std::endl;
+  // std::cout << std::endl << std::endl << "Objective value" << std::endl;
+  // std::cout << "f(x*) = " << obj_value << std::endl;
 
-  std::cout << std::endl << "Final value of the constraints:" << std::endl;
-  for (Ipopt::Index i=0; i<m ;i++) {
-    std::cout << "g(" << i << ") = " << g[i] << std::endl;
-  } */
+  // std::cout << std::endl << "Final value of the constraints:" << std::endl;
+  // for (Ipopt::Index i=0; i<m ;i++) {
+  //   std::cout << "g(" << i << ") = " << g[i] << std::endl;
+  // }
 }

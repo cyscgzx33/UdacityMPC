@@ -25,6 +25,21 @@ int main(int argv, char* argc[])
   // The following overwrites the default name (ipopt.opt) of the
   // options file
   // app->Options()->SetStringValue("option_file_name", "hs071.opt");
+  
+  /** MPC problem formulation **/
+  // iteration times
+  int iters = 50;
+  // initial state
+  double x_0    =  288.0;
+  double y_0    =  -178.0;
+  double psi_0  =  2.0;
+  double v_0    =  39.0;
+  // state iterating
+  for (size_t i = 0; i < iters; i++)
+  {
+      std::cout << "Iteration #" << i << ": " << std::endl;
+  }
+
 
   // Initialize the IpoptApplication and process the options
   Ipopt::ApplicationReturnStatus status;

@@ -108,12 +108,7 @@ class IpoptMPC : public Ipopt::TNLP
     IpoptMPC& operator=(const IpoptMPC&);
     //@}    
 
-
-    std::vector<std::vector<double>> waypoints_;
-    std::vector<double> cl_x_; // center line x
-    std::vector<double> cl_y_; // center line y
-    std::vector<double> cl_phi_; // center line direction phi
-
+    /** Other methods that assist the MPC problem formulation **/
     void readRoadmapFromCSV(const std::string& roadmap_file_name)
     {
         // Parse the roadmap file and add waypoints
@@ -134,13 +129,15 @@ class IpoptMPC : public Ipopt::TNLP
         waypoints_.push_back(wp);
     }
 
-    /** Other variables that assist the MPC problem formulation **/
+    /** Other attributes that assist the MPC problem formulation **/
     std::vector<double> x0_;                      // initial state variables
     int map_sz_;                                  // size of segments of the map
     std::vector<std::vector<double>> waypoints_;  // stored waypoints info from csv
     std::vector<double> cl_x_;                    // center line x
     std::vector<double> cl_y_;                    // center line y
     std::vector<double> cl_phi_;                  // center line direction phi
+    std::vector<double> state_sol_;               // solved solution of state each iter
+    std::vector<double> actuator_sol_;            // solved solution of actuator each iter
 
 };
 
