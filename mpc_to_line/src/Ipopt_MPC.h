@@ -3,7 +3,9 @@
 
 #include <vector>
 #include <iostream>
-#include <IpTNLP.hpp>
+#include <fstream>
+#include <sstream>
+#include "IpTNLP.hpp"
 #include "IpIpoptApplication.hpp"
 
 /** C++ MPC Implementation NLP for interfacing a problem with IPOPT.
@@ -108,12 +110,32 @@ class IpoptMPC : public Ipopt::TNLP
 
     /** Other methods that assist the MPC problem formulation **/
     void readRoadmapFromCSV(const std::string& roadmap_file_name)
-    {
-        // Parse the roadmap file and add waypoints
-        std::istringstream rm_stream(roadmap_file_name);
-        std::string line;
-        while (std::getline(rm_stream, line))
-            parseRoadMapLine(line);
+    { 
+        std::ifstream roadmap_data( roadmap_file_name.c_str() );
+
+        if ( roadmap_data.is_open() )
+        {
+          std::string line;
+          while ( std::getline( roadmap_data, line ) )
+          {
+            std::istringstream line_stream(line);
+            std::string num;
+            std::vector<double> wp;
+            while ( std::getline(line_stream, num, ',') )
+              wp.push_back( std::stod(num) );
+            waypoints_.push_back(wp);
+          }
+        }
+        else
+          std::cerr << "Opening road map data file failed!" << std::endl;
+
+        // waypoints_.push_back(wp);
+
+        // // Parse the roadmap file and add waypoints
+        // std::istringstream rm_stream(roadmap_file_name);
+        // std::string line;
+        // while (std::getline(rm_stream, line))
+        //     parseRoadMapLine(line);
     }
 
     void parseRoadMapLine(const std::string& line)
@@ -123,7 +145,7 @@ class IpoptMPC : public Ipopt::TNLP
         std::string number;
         std::vector<double> wp;
         while (std::getline(line_stream, number, ','))
-            wp.push_back(std::stof(number));
+            wp.push_back(std::stod(number));
         waypoints_.push_back(wp);
     }
 

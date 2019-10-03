@@ -10,7 +10,7 @@
 /**
  * Set N and dt
  */
-size_t N = 50;
+Ipopt::Index N = 50;
 double dt = 0.02;
 
 // This value assumes the model presented in the classroom is used.
@@ -31,12 +31,12 @@ double ref_v = 20;
 // The solver takes all the state variables and actuator
 // variables in a singular vector. Thus, we should to establish
 // when one variable starts and another ends to make our lifes easier.
-size_t x_start = 0;
-size_t y_start = x_start + N;
-size_t psi_start = y_start + N;
-size_t v_start = psi_start + N;
-size_t delta_start = v_start + N;
-size_t a_start = delta_start + N - 1;
+Ipopt::Index x_start = 0;
+Ipopt::Index y_start = x_start + N;
+Ipopt::Index psi_start = y_start + N;
+Ipopt::Index v_start = psi_start + N;
+Ipopt::Index delta_start = v_start + N;
+Ipopt::Index a_start = delta_start + N - 1;
 
 //@}
 
@@ -44,8 +44,8 @@ size_t a_start = delta_start + N - 1;
 // init state & actuator sol vector, and initial state vector
 IpoptMPC::IpoptMPC(std::vector<double> x0) : state_sol_(4, 0.0), actuator_sol_(2, 0.0), x0_(x0)
 {
-  // readRoadmapFromCSV("/home/honda/git/UdacityMPC/mpc_to_line/roadmap.csv");
-  readRoadmapFromCSV("/home/ethan/git/UdacityMPC/mpc_to_line/roadmap.csv");
+  readRoadmapFromCSV("/home/honda/git/UdacityMPC/mpc_to_line/roadmap.csv");
+  // readRoadmapFromCSV("/home/ethan/git/UdacityMPC/mpc_to_line/roadmap.csv");
 
   // parse waypoints_ to center line (x, y, phi)
   for (auto& wp : waypoints_)
@@ -74,10 +74,13 @@ bool IpoptMPC::get_nlp_info(Ipopt::Index& n, Ipopt::Index& m, Ipopt::Index& nnz_
   nnz_jac_g = 15 * (N - 1); // 4 + 4 + 4 + 3
 
   // related to hessian
-  nnz_h_lag = N; // ???
+  nnz_h_lag = 1000 * N; // ??? // crucial change: ignoring it
 
   // use the C style indexing (0-based)
   index_style = TNLP::C_STYLE;
+
+  // verbosely test
+  std::cout << "get_nlp_info() seems to be initialzied correct" << std::endl;
 
   return true;
 }
@@ -123,10 +126,15 @@ bool IpoptMPC::get_bounds_info(Ipopt::Index n, Ipopt::Number* x_l, Ipopt::Number
 
   // the second constraint g2 is an equality constraint, so we set the
   // upper and lower bound to the same value
-  for (int i = 0; i < 4 * N - 4; i++)
+  for (Ipopt::Index i = 0; i < 4 * N - 4; i++)
   {
-    g_l[i] = g_u[i] = 0.0; // every constraint is an equality constraint, w/ lower & upper bound equal to 0
+    g_l[i] = g_u[i] = 0.0; // every constraint is an equality constraint, w/ lower & upper bound equal to 0 
+    // g_l[i] = -400000.0;  // dummy test
+    // g_u[i] = 400000.0;
   }
+
+  // verbosely test
+  std::cout << "get_bounds_info() seems to be initialized correct" << std::endl;
 
   return true;
 }
@@ -137,6 +145,9 @@ bool IpoptMPC::get_starting_point(Ipopt::Index n, bool init_x, Ipopt::Number* x,
                                   Ipopt::Index m, bool init_lambda,
                                   Ipopt::Number* lambda)
 {
+  // verbosely test
+  std::cout << "get_starting_point() starts to work" << std::endl;
+
   // Here, we assume we only have starting values for x, if you code
   // your own NLP, you can provide starting values for the dual variables
   // if you wish
@@ -164,12 +175,18 @@ bool IpoptMPC::get_starting_point(Ipopt::Index n, bool init_x, Ipopt::Number* x,
   x[psi_start] = x0_[2];
   x[v_start]   = x0_[3];
 
+  // verbosely test
+  std::cout << "get_starting_point() seems to be initialized correct" << std::endl;
+
   return true;
 }
 
 // returns the value of the objective function
 bool IpoptMPC::eval_f(Ipopt::Index n, const Ipopt::Number* x, bool new_x, Ipopt::Number& obj_value)
 {
+  // verbosely test
+  std::cout << "eval_f() starts to work" << std::endl;
+
   assert(n == 6 * N - 2);
 
   /**
@@ -177,13 +194,13 @@ bool IpoptMPC::eval_f(Ipopt::Index n, const Ipopt::Number* x, bool new_x, Ipopt:
    * obj_value = x[0] * x[3] * (x[0] + x[1] + x[2]) + x[2];
    */
   obj_value = 0.0;
-  for (int i = 0; i < N; i++)
+  for (Ipopt::Index i = 0; i < N; i++)
   {
     std::vector<double> dist(map_sz_, 0.0);
 
     /* find the closest segment to the current position */
     // construct the dist vector at each step
-    for (int j = 0; j < map_sz_; j++)
+    for (Ipopt::Index j = 0; j < map_sz_; j++)
       dist[j] = pow( x[x_start + i] - cl_x_[j], 2 ) + pow( x[y_start + i] - cl_y_[j], 2 );
     // find the closest element
     auto closest = std::min_element( dist.begin(), dist.end() );
@@ -204,12 +221,18 @@ bool IpoptMPC::eval_f(Ipopt::Index n, const Ipopt::Number* x, bool new_x, Ipopt:
     }
   }
 
+  // verbosely test
+  std::cout << "eval_f() seems to be initialzied correct" << std::endl;
+
   return true;
 }
 
 // return the gradient of the objective function grad_{x} f(x)
 bool IpoptMPC::eval_grad_f(Ipopt::Index n, const Ipopt::Number* x, bool new_x, Ipopt::Number* grad_f)
 {
+  // verbosely test
+  std::cout << "eval_grad_f() starts to work" << std::endl;
+
   // assert variable numbers
   assert(n == 6 * N - 2);
 
@@ -221,13 +244,13 @@ bool IpoptMPC::eval_grad_f(Ipopt::Index n, const Ipopt::Number* x, bool new_x, I
    * grad_f[3] = x[0] * (x[0] + x[1] + x[2]);
    */
 
-  for (int i = 0; i < N; i++)
+  for (Ipopt::Index i = 0; i < N; i++)
   {
     std::vector<double> dist(map_sz_, 0.0);
 
     /* find the closest segment to the current position */
     // construct the dist vector at each step
-    for (int j = 0; j < map_sz_; j++)
+    for (Ipopt::Index j = 0; j < map_sz_; j++)
       dist[j] = pow( x[x_start + i] - cl_x_[j], 2 ) + pow( x[y_start + i] - cl_y_[j], 2 );
     // find the closest element
     auto closest = std::min_element( dist.begin(), dist.end() );
@@ -250,12 +273,18 @@ bool IpoptMPC::eval_grad_f(Ipopt::Index n, const Ipopt::Number* x, bool new_x, I
     }
   }
 
+  // verbosely test
+  std::cout << "eval_grad_f() seems to be initialzied correct" << std::endl;
+
   return true;
 }
 
 // return the value of the constraints: g(x)
 bool IpoptMPC::eval_g(Ipopt::Index n, const Ipopt::Number* x, bool new_x, Ipopt::Index m, Ipopt::Number* g)
 {
+  // verbosely test
+  std::cout << "eval_g_f() starts to work " << std::endl;
+
   assert(n == 6 * N - 2);
   assert(m == 4 * N - 4);
 
@@ -276,13 +305,16 @@ bool IpoptMPC::eval_g(Ipopt::Index n, const Ipopt::Number* x, bool new_x, Ipopt:
    * 
    * */
 
-  for (int i = 0; i < N - 1; i++)
+  for (Ipopt::Index i = 0; i < N - 1; i++)
   {
     g[x_start + i]   =  x[x_start + i]   + x[v_start + i] * cos( x[psi_start + i] ) * dt  - x[x_start + i + 1]   ;
     g[y_start + i]   =  x[y_start + i]   + x[v_start + i] * sin( x[psi_start + i] ) * dt  - x[x_start + i + 1]   ;
     g[psi_start + i] =  x[psi_start + i] + x[v_start + i] / x[delta_start + i] * dt       - x[psi_start + i + 1] ;
     g[v_start + i]   =  x[v_start + i]   + x[a_start + i] * dt                            - x[v_start + i + 1]   ;
   }
+
+  // verbosely test
+  std::cout << "eval_g_f() seems to be initialized correct " << std::endl;
 
   return true;
 }
@@ -292,9 +324,12 @@ bool IpoptMPC::eval_jac_g(Ipopt::Index n, const Ipopt::Number* x, bool new_x,
                           Ipopt::Index m, Ipopt::Index nele_jac, Ipopt::Index* iRow, Ipopt::Index *jCol,
                           Ipopt::Number* values)
 {
+  // verbosely test
+  std::cout << "eval_jac_g() starts to work" << std::endl;
+
   if (values == NULL)
   {
-    for (int i = 0; i < N - 1; i++)
+    for (Ipopt::Index i = 0; i < N - 1; i++)
     { 
       /* @iRow = x_start + i, it contains 4 elements */ 
       // x(t)
@@ -349,10 +384,15 @@ bool IpoptMPC::eval_jac_g(Ipopt::Index n, const Ipopt::Number* x, bool new_x,
       iRow[ (v_start + i) * 3 + 2 ] = v_start + i;
       jCol[ (v_start + i) * 3 + 2 ] = v_start + i + 1;
     }
+
+    // verbosely test
+    std::cout << "eval_jac_g() structure part seems to be initialized correct " << std::endl;
   }
   else
-  {
-    for (int i = 0; i < N - 1; i++)
+  { 
+    // verbosely test
+    std::cout << "eval_jac_g() starts to work on values part " << std::endl;
+    for (Ipopt::Index i = 0; i < N - 1; i++)
     { 
       /* @iRow = x_start + i, it contains 4 elements */ 
       // x(t)
@@ -392,6 +432,9 @@ bool IpoptMPC::eval_jac_g(Ipopt::Index n, const Ipopt::Number* x, bool new_x,
       // v(t+1)
       values[ (v_start + i) * 3 + 2 ] = -1.0;
     }
+
+    // verbosely test
+    std::cout << "eval_jac_g() values part seems to be initialized correct " << std::endl;
   }
   
   // [Simple Reference]
@@ -438,7 +481,10 @@ bool IpoptMPC::eval_h(Ipopt::Index n, const Ipopt::Number* x, bool new_x,
                       Ipopt::Number obj_factor, Ipopt::Index m, const Ipopt::Number* lambda,
                       bool new_lambda, Ipopt::Index nele_hess, Ipopt::Index* iRow,
                       Ipopt::Index* jCol, Ipopt::Number* values)
-{
+{ 
+  // verbosely test
+  std::cout << "eval_h() starts to work" << std::endl;
+
   // [Simple Reference]
   /* if (values == NULL) {
     // return the structure. This is a symmetric matrix, fill the lower left
@@ -509,6 +555,9 @@ void IpoptMPC::finalize_solution(Ipopt::SolverReturn status,
   // here is where we would store the solution to variables, or write to a file, etc
   // so we could use the solution.
 
+  // verbosely test
+  std::cout << "finalize_solution() starts to work" << std::endl;
+
   // parse the solution to each state vector & actuator vector
   state_sol_[0]     =  x[x_start + 1];
   state_sol_[1]     =  x[y_start + 1];
@@ -519,24 +568,24 @@ void IpoptMPC::finalize_solution(Ipopt::SolverReturn status,
 
   // [Simple reference]
   // For this example, we write the solution to the console
-  // std::cout << std::endl << std::endl << "Solution of the primal variables, x" << std::endl;
-  // for (Ipopt::Index i=0; i<n; i++) {
-  //    std::cout << "x[" << i << "] = " << x[i] << std::endl;
-  // }
+  std::cout << std::endl << std::endl << "Solution of the primal variables, x" << std::endl;
+  for (Ipopt::Index i=0; i<n; i++) {
+     std::cout << "x[" << i << "] = " << x[i] << std::endl;
+  }
 
-  // std::cout << std::endl << std::endl << "Solution of the bound multipliers, z_L and z_U" << std::endl;
-  // for (Ipopt::Index i=0; i<n; i++) {
-  //   std::cout << "z_L[" << i << "] = " << z_L[i] << std::endl;
-  // }
-  // for (Ipopt::Index i=0; i<n; i++) {
-  //   std::cout << "z_U[" << i << "] = " << z_U[i] << std::endl;
-  // }
+  std::cout << std::endl << std::endl << "Solution of the bound multipliers, z_L and z_U" << std::endl;
+  for (Ipopt::Index i=0; i<n; i++) {
+    std::cout << "z_L[" << i << "] = " << z_L[i] << std::endl;
+  }
+  for (Ipopt::Index i=0; i<n; i++) {
+    std::cout << "z_U[" << i << "] = " << z_U[i] << std::endl;
+  }
 
-  // std::cout << std::endl << std::endl << "Objective value" << std::endl;
-  // std::cout << "f(x*) = " << obj_value << std::endl;
+  std::cout << std::endl << std::endl << "Objective value" << std::endl;
+  std::cout << "f(x*) = " << obj_value << std::endl;
 
-  // std::cout << std::endl << "Final value of the constraints:" << std::endl;
-  // for (Ipopt::Index i=0; i<m ;i++) {
-  //   std::cout << "g(" << i << ") = " << g[i] << std::endl;
-  // }
+  std::cout << std::endl << "Final value of the constraints:" << std::endl;
+  for (Ipopt::Index i=0; i<m ;i++) {
+    std::cout << "g(" << i << ") = " << g[i] << std::endl;
+  }
 }

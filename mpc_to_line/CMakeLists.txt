@@ -10,7 +10,7 @@ set(CXX_FLAGS "-Wall")
 set(CMAKE_CXX_FLAGS "${CXX_FLAGS}")
 
 # set(sources src/custom_MPC.cpp src/test_custom.cpp)
-set(sources src/Ipopt_MPC.cpp src/test_ipopt_MPC.cpp)
+set(sources src/Ipopt_MPC.cpp src/test_ipopt_MPC_single_step.cpp)
 
 include_directories(src/Eigen-3.3)
 include_directories(/usr/local/include/coin)
