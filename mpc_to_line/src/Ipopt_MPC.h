@@ -2,6 +2,7 @@
 #define IPOPT_MPC_H
 
 #include <vector>
+#include <iostream>
 #include <IpTNLP.hpp>
 #include "IpIpoptApplication.hpp"
 
@@ -25,7 +26,7 @@ class IpoptMPC : public Ipopt::TNLP
 {
   public:
     /** defualt constructor **/
-    IpoptMPC();
+    IpoptMPC(std::vector<double> x0);
 
     /** default destructor **/
     virtual ~IpoptMPC();
@@ -85,11 +86,8 @@ class IpoptMPC : public Ipopt::TNLP
     //@}
 
 
-    // Solve the model given an initial state.
-    // Return the next state and actuations as a vector.
-    std::vector<double> Solve(const Eigen::VectorXd &x0, 
-                              const Eigen::VectorXd &coeffs);
-    std::vector<double> Solve(const Eigen::VectorXd& x0);
+    // Return the next state as a vector.
+    std::vector<double> getSolutionState() const { return state_sol_; }
 
   private:
     /**@name Methods to block default compiler methods.

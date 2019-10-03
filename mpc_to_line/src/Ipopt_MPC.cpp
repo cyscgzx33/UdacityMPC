@@ -41,9 +41,11 @@ size_t a_start = delta_start + N - 1;
 //@}
 
 // constructor
-IpoptMPC::IpoptMPC() : state_sol_(4, 0.0), actuator_sol_(2, 0.0) // init state & actuator sol vector
+// init state & actuator sol vector, and initial state vector
+IpoptMPC::IpoptMPC(std::vector<double> x0) : state_sol_(4, 0.0), actuator_sol_(2, 0.0), x0_(x0)
 {
-  readRoadmapFromCSV("/home/honda/git/UdacityMPC/mpc_to_line/roadmap.csv");
+  // readRoadmapFromCSV("/home/honda/git/UdacityMPC/mpc_to_line/roadmap.csv");
+  readRoadmapFromCSV("/home/ethan/git/UdacityMPC/mpc_to_line/roadmap.csv");
 
   // parse waypoints_ to center line (x, y, phi)
   for (auto& wp : waypoints_)
@@ -69,7 +71,7 @@ bool IpoptMPC::get_nlp_info(Ipopt::Index& n, Ipopt::Index& m, Ipopt::Index& nnz_
   m = 4 * (N - 1);
 
   // non-zeros in the jacobian example
-  nnz_jac_g = N; // ???
+  nnz_jac_g = 15 * (N - 1); // 4 + 4 + 4 + 3
 
   // related to hessian
   nnz_h_lag = N; // ???
@@ -112,16 +114,19 @@ bool IpoptMPC::get_bounds_info(Ipopt::Index n, Ipopt::Number* x_l, Ipopt::Number
   }
 
   // the first constraint g1 has a lower bound of 25
-  g_l[0] = 25; // ???
+  // g_l[0] = 25;
   // the first constraint g1 has NO upper bound, here we set it to 2e19.
   // Ipopt interprets any number greater than nlp_upper_bound_inf as
   // infinity. The default value of nlp_upper_bound_inf and nlp_lower_bound_inf
   // is 1e19 and can be changed through ipopt options.
-  g_u[0] = 2e19; // ???
+  // g_u[0] = 2e19;
 
   // the second constraint g2 is an equality constraint, so we set the
   // upper and lower bound to the same value
-  g_l[1] = g_u[1] = 40.0; // ???
+  for (int i = 0; i < 4 * N - 4; i++)
+  {
+    g_l[i] = g_u[i] = 0.0; // every constraint is an equality constraint, w/ lower & upper bound equal to 0
+  }
 
   return true;
 }
@@ -165,7 +170,7 @@ bool IpoptMPC::get_starting_point(Ipopt::Index n, bool init_x, Ipopt::Number* x,
 // returns the value of the objective function
 bool IpoptMPC::eval_f(Ipopt::Index n, const Ipopt::Number* x, bool new_x, Ipopt::Number& obj_value)
 {
-  assert(n == 6 * N - 2); // ???
+  assert(n == 6 * N - 2);
 
   /**
    * [Simple Reference]
@@ -287,6 +292,108 @@ bool IpoptMPC::eval_jac_g(Ipopt::Index n, const Ipopt::Number* x, bool new_x,
                           Ipopt::Index m, Ipopt::Index nele_jac, Ipopt::Index* iRow, Ipopt::Index *jCol,
                           Ipopt::Number* values)
 {
+  if (values == NULL)
+  {
+    for (int i = 0; i < N - 1; i++)
+    { 
+      /* @iRow = x_start + i, it contains 4 elements */ 
+      // x(t)
+      iRow[ (x_start + i) * 4 ] = x_start + i;
+      jCol[ (x_start + i) * 4 ] = x_start + i; 
+      // v(t)
+      iRow[ (x_start + i) * 4 + 1 ] = x_start + i;
+      jCol[ (x_start + i) * 4 + 1 ] = v_start + i;
+      // psi(t)
+      iRow[ (x_start + i) * 4 + 2 ] = x_start + i;
+      jCol[ (x_start + i) * 4 + 2 ] = psi_start + i;
+      // x(t+1)
+      iRow[ (x_start + i) * 4 + 3 ] = x_start + i;
+      jCol[ (x_start + i) * 4 + 3 ] = x_start + i + 1;
+
+      /* @iRow = y_start + i, it contains 4 elements */ 
+      // y(t)
+      iRow[ (y_start + i) * 4 ] = y_start + i;
+      jCol[ (y_start + i) * 4 ] = y_start + i; 
+      // v(t)
+      iRow[ (y_start + i) * 4 + 1 ] = y_start + i;
+      jCol[ (y_start + i) * 4 + 1 ] = v_start + i;
+      // psi(t)
+      iRow[ (y_start + i) * 4 + 2 ] = y_start + i;
+      jCol[ (y_start + i) * 4 + 2 ] = psi_start + i;
+      // y(t+1)
+      iRow[ (y_start + i) * 4 + 3 ] = y_start + i;
+      jCol[ (y_start + i) * 4 + 3 ] = y_start + i + 1; 
+
+      /* @iRow = psi_start + i, it contains 4 elements */ 
+      // psi(t)
+      iRow[ (psi_start + i) * 4 ] = psi_start + i;
+      jCol[ (psi_start + i) * 4 ] = psi_start + i; 
+      // v(t)
+      iRow[ (psi_start + i) * 4 + 1 ] = psi_start + i;
+      jCol[ (psi_start + i) * 4 + 1 ] = v_start + i;
+      // delta(t)
+      iRow[ (psi_start + i) * 4 + 2 ] = psi_start + i;
+      jCol[ (psi_start + i) * 4 + 2 ] = delta_start + i;
+      // psi(t+1)
+      iRow[ (psi_start + i) * 4 + 3 ] = psi_start + i;
+      jCol[ (psi_start + i) * 4 + 3 ] = psi_start + i + 1;
+
+      /* @iRow = v_start + i, it contains 3 elements */ 
+      // v(t)
+      iRow[ (v_start + i) * 3 ] = v_start + i;
+      jCol[ (v_start + i) * 3 ] = v_start + i; 
+      // a(t)
+      iRow[ (v_start + i) * 3 + 1 ] = v_start + i;
+      jCol[ (v_start + i) * 3 + 1 ] = a_start + i;
+      // v(t+1)
+      iRow[ (v_start + i) * 3 + 2 ] = v_start + i;
+      jCol[ (v_start + i) * 3 + 2 ] = v_start + i + 1;
+    }
+  }
+  else
+  {
+    for (int i = 0; i < N - 1; i++)
+    { 
+      /* @iRow = x_start + i, it contains 4 elements */ 
+      // x(t)
+      values[ (x_start + i) * 4 ] = 1.0;
+      // v(t)
+      values[ (x_start + i) * 4 + 1 ] = cos( x[psi_start + i] ) * dt; // cos( psi(t) ) * dt
+      // psi(t)
+      values[ (x_start + i) * 4 + 2 ] = -sin( x[psi_start + i] ) * x[v_start + i] * dt; // -v(t) * sin( psi(t) ) * dt
+      // x(t+1)
+      values[ (x_start + i) * 4 + 3 ] = -1.0;
+
+      /* @iRow = y_start + i, it contains 4 elements */ 
+      // y(t)
+      values[ (y_start + i) * 4 ] = 1.0;
+      // v(t)
+      values[ (y_start + i) * 4 + 1 ] = sin( x[psi_start + i] ) * dt; // sin( psi(t) ) * dt
+      // psi(t)
+      values[ (y_start + i) * 4 + 2 ] = cos( x[psi_start + i] ) * x[v_start + i] * dt; // v(t) * cos( psi(t) ) * dt
+      // y(t+1)
+      values[ (y_start + i) * 4 + 3 ] = -1.0;
+
+      /* @iRow = psi_start + i, it contains 4 elements */ 
+      // psi(t)
+      values[ (psi_start + i) * 4 ] = 1.0;
+      // v(t)
+      values[ (psi_start + i) * 4 + 1 ] = x[delta_start + i] * dt / Lf; // delta(t) * dt / Lf
+      // delta(t)
+      values[ (psi_start + i) * 4 + 2 ] = x[v_start + i] * dt / Lf; // v(t) * dt / Lf
+      // psi(t+1)
+      values[ (psi_start + i) * 4 + 3 ] = -1.0;
+
+      /* @iRow = v_start + i, it contains 3 elements */ 
+      // v(t)
+      values[ (v_start + i) * 3 ] = 1.0;
+      // a(t)
+      values[ (v_start + i) * 3 + 1 ] = dt;
+      // v(t+1)
+      values[ (v_start + i) * 3 + 2 ] = -1.0;
+    }
+  }
+  
   // [Simple Reference]
   /* if (values == NULL) {
     // return the structure of the jacobian
