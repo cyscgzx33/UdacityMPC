@@ -102,6 +102,14 @@ bool ODNaive::get_starting_point(Index n, bool init_x, Number* x,
   x[3] = 1.0;
   x[4] = 0.0;
 
+  // test on improper starting point
+  // result: not cool
+  // x[0] = 0.0;
+  // x[1] = 0.0;
+  // x[2] = 0.5;
+  // x[3] = 0.0;
+  // x[4] = 0.0;
+
   return true;
 }
 
