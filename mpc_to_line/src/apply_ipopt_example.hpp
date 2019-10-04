@@ -40,8 +40,8 @@ using namespace Ipopt;
  * Problem ODNaive looks like this
  *
  *     min   x0^2 + (x1 - 2)^2 + (x2 - 1)^2 + (x3 -1)^2 + x4^2
- *     s.t.  x0 + x2 - x1      =  0
- *           x2 + x4 - x3      =  0
+ *     s.t.  x0 + x2 * dt - x1      =  0
+ *           x2 + x4 * dt - x3      =  0
  *
  *     Starting point:
  *        x = (0, 2, 0.5, 1.0, 0)

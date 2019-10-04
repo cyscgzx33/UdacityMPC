@@ -10,8 +10,12 @@
 #include "IpIpoptApplication.hpp"
 #include <cassert>
 #include <iostream>
+#include <algorithm>
 
 using namespace Ipopt;
+
+/* global variable */
+const double dt = 1.0;
 
 // constructor
 ODNaive::ODNaive()
@@ -106,7 +110,22 @@ bool ODNaive::eval_f(Index n, const Number* x, bool new_x, Number& obj_value)
 {
   assert(n == 5);
 
-  obj_value = x[0] * x[0] + (x[1] - 2.0) * (x[1] - 2.0) + (x[2] - 1.0) * (x[2] - 1.0) + (x[3] - 1.0) * (x[3] - 1.0) + x[4] * x[4];
+  std::vector<double> map = {1.0, 2.2, 3.0};
+  std::vector<double> dist(3, 0.0);
+
+  for (int i = 0; i < 3; i++)
+    dist[i] = pow(map[i] - x[1], 2);
+  auto closest = std::min_element( dist.begin(), dist.end() );
+  int cl_idx = closest - dist.begin();
+
+  obj_value = 0.0;
+
+  obj_value += x[0] * x[0];
+  // obj_value += (x[1] - 2.0) * (x[1] - 2.0);
+  obj_value += (x[1] - map[cl_idx]) * (x[1] - map[cl_idx]);
+  obj_value += (x[2] - 1.0) * (x[2] - 1.0);
+  obj_value += (x[3] - 1.0) * (x[3] - 1.0);
+  obj_value += x[4] * x[4];
 
   return true;
 }
@@ -116,8 +135,17 @@ bool ODNaive::eval_grad_f(Index n, const Number* x, bool new_x, Number* grad_f)
 {
   assert(n == 5);
 
+  std::vector<double> map = {1.0, 2.2, 3.0};
+  std::vector<double> dist(3, 0.0);
+
+  for (int i = 0; i < 3; i++)
+    dist[i] = pow(map[i] - x[1], 2);
+  auto closest = std::min_element( dist.begin(), dist.end() );
+  int cl_idx = closest - dist.begin();
+
   grad_f[0] = 2 * x[0];
-  grad_f[1] = 2 * (x[1] - 2.0);
+  // grad_f[1] = 2 * (x[1] - 2.0);
+  grad_f[1] = 2 * (x[1] - map[cl_idx]);
   grad_f[2] = 2 * (x[2] - 1.0);
   grad_f[3] = 2 * (x[3] - 1.0);
   grad_f[4] = 2 * x[4];
@@ -130,38 +158,9 @@ bool ODNaive::eval_g(Index n, const Number* x, bool new_x, Index m, Number* g)
 {
   assert(n == 5);
   assert(m == 2);
-  // double weird_lambda = 1.05;
-  // double naughty_lambda = 1.1;
-  // double crazy_lambda = 1.2;
-  // double insane_lambda = 1.5;
-  // if (x[1] <= 4.625)
-  // {
-  //   g[0] = x[0] * x[1] * x[2] * x[3];
-  //   std::cout << "----------[ no lambda is accessed ... :( ]----------" << std::endl;
-  // }
-  // else if (x[1] <= 4.650)
-  // {
-  //   g[0] = weird_lambda * x[0] * x[1] * x[2] * x[3];
-  //   std::cout << "==========[ werid lambda is accessed ... :) ]==========" << std::endl;
-  // }
-  // else if (x[1] <= 4.675)
-  // {
-  //   g[0] = naughty_lambda * x[0] * x[1] * x[2] * x[3];
-  //   std::cout << "~~~~~~~~~~[ naughty lambda is accessed ... :D ]~~~~~~~~~~" << std::endl;
-  // }
-  // else if (x[1] <= 4.70)
-  // {
-  //   g[0] = crazy_lambda * x[0] * x[1] * x[2] * x[3];
-  //   std::cout << "**********[ crazy lambda is accessed ... XD ]**********" << std::endl;
-  // }
-  // else if (x[1] <= 4.725)
-  // {
-  //   g[0] = insane_lambda * x[0] * x[1] * x[2] * x[3];
-  //   std::cout << "!!!!!!!!!![ insane lambda is accessed ... XDDDDDD ]!!!!!!!!!!" << std::endl;
-  // }
 
-  g[0] = x[0] + x[2] - x[1];
-  g[1] = x[2] + x[4] - x[3];
+  g[0] = x[0] + x[2] * dt - x[1];
+  g[1] = x[2] + x[4] * dt - x[3];
 
   return true;
 }
@@ -193,11 +192,11 @@ bool ODNaive::eval_jac_g(Index n, const Number* x, bool new_x,
 
     values[0] = 1.0; // 0,0
     values[1] = -1.0; // 0,1
-    values[2] = 1.0; // 0,2
+    values[2] = dt; // 0,2
 
     values[3] = 1.0; // 0,3
     values[4] = -1.0; // 1,0
-    values[5] = 1.0; // 1,1
+    values[5] = dt; // 1,1
   }
 
   return true;
