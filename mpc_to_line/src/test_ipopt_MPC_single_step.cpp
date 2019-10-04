@@ -1,18 +1,22 @@
 #include <iostream>
 #include <IpTNLP.hpp>
 #include <memory>
-#include "Ipopt_MPC.h"
+#include "Ipopt_MPC_one_step.h"
 
 int main(int argv, char* argc[])
 {
 
     /** MPC single step problem formulation **/
     // initial state
-    std::vector<double> x_0{ 288.0, -178.0, 2.0, 39.0 };
+    // std::vector<double> x_0{ 288.0, -178.0, 2.0, 19.0 };
 
     // Create a new instance of your nlp
     // (use a SmartPtr, not raw)
-    Ipopt::SmartPtr<Ipopt::TNLP> kinematic_mpc = new IpoptMPC(x_0);
+    // std::vector<std::vector<double>> wps { {279.02,-182.26,294.22,-176.02,287.39,-178.82,1.9603},
+    //                                        {276.62,-172.5,291.29,-167.3,284.2,-169.82,1.9115},
+    //                                        {272.91,-160.58,287.16,-155.43,279.94,-158.03,1.9174} };
+    // Ipopt::SmartPtr<Ipopt::TNLP> kinematic_mpc = new IpoptMPCOneStep(x_0, wps);
+    Ipopt::SmartPtr<Ipopt::TNLP> kinematic_mpc = new IpoptMPCOneStep();
 
     // Create a new instance of IpoptApplication
     //  (use a SmartPtr, not raw)

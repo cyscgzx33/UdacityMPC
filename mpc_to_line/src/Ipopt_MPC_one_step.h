@@ -28,7 +28,8 @@ class IpoptMPCOneStep : public Ipopt::TNLP
 {
   public:
     /** defualt constructor **/
-    IpoptMPCOneStep(std::vector<double> x0);
+    // IpoptMPCOneStep(std::vector<double> x0, std::vector<std::vector<double>> wps);
+    IpoptMPCOneStep();
 
     /** default destructor **/
     virtual ~IpoptMPCOneStep();
@@ -89,7 +90,7 @@ class IpoptMPCOneStep : public Ipopt::TNLP
 
 
     // Return the next state as a vector.
-    std::vector<double> getSolutionState() const { return state_sol_; }
+    // std::vector<double> getSolutionState() const { return state_sol_; }
 
   private:
     /**@name Methods to block default compiler methods.
@@ -123,7 +124,7 @@ class IpoptMPCOneStep : public Ipopt::TNLP
             std::vector<double> wp;
             while ( std::getline(line_stream, num, ',') )
               wp.push_back( std::stod(num) );
-            waypoints_.push_back(wp);
+            // waypoints_.push_back(wp);
           }
         }
         else
@@ -146,19 +147,18 @@ class IpoptMPCOneStep : public Ipopt::TNLP
         std::vector<double> wp;
         while (std::getline(line_stream, number, ','))
             wp.push_back(std::stod(number));
-        waypoints_.push_back(wp);
+        // waypoints_.push_back(wp);
     }
 
     /** Other attributes that assist the MPC problem formulation **/
-    std::vector<double> x0_;                      // initial state variables
-    int map_sz_;                                  // size of segments of the map
-    std::vector<std::vector<double>> waypoints_;  // stored waypoints info from csv
-    std::vector<double> cl_x_;                    // center line x
-    std::vector<double> cl_y_;                    // center line y
-    std::vector<double> cl_phi_;                  // center line direction phi
-    std::vector<double> state_sol_;               // solved solution of state each iter
-    std::vector<double> actuator_sol_;            // solved solution of actuator each iter
-
+    // std::vector<double> x0_;                      // initial state variables
+    // int map_sz_;                                  // size of segments of the map
+    // std::vector<std::vector<double>> waypoints_;  // stored waypoints info from csv
+    // std::vector<double> cl_x_;                    // center line x
+    // std::vector<double> cl_y_;                    // center line y
+    // std::vector<double> cl_phi_;                  // center line direction phi
+    // std::vector<double> state_sol_;               // solved solution of state each iter
+    // std::vector<double> actuator_sol_;            // solved solution of actuator each iter
 };
 
 #endif  // IPOPT_MPC_ONE_STEP_H

@@ -11,7 +11,19 @@
  * Set N and dt
  */
 Ipopt::Index N = 2;
-double dt = 0.02;
+// double dt = 0.02;
+double dt = 0.5;
+
+// related to map
+// int map_sz = 3;
+// std::vector<std::vector<double>> waypoints = { {279.02,-182.26,294.22,-176.02,287.39,-178.82,1.9603},
+//                                                {276.62,-172.5,291.29,-167.3,284.2,-169.82,1.9115},
+//                                                {272.91,-160.58,287.16,-155.43,279.94,-158.03,1.9174} };
+// std::vector<double> x0     =  { 288.0, -178.0, 2.0, 19.0 };
+// std::vector<double> cl_x   =  { 287.39, 284.2, 279.97 };
+// std::vector<double> cl_y   =  { -178.82, -169.82, -158.03 };
+// std::vector<double> cl_phi =  { 1.9603, 1.9115, 1.9174 };
+
 
 // This value assumes the model presented in the classroom is used.
 //
@@ -42,18 +54,33 @@ Ipopt::Index a_start = delta_start + N - 1;
 
 // constructor
 // init state & actuator sol vector, and initial state vector
-IpoptMPCOneStep::IpoptMPCOneStep(std::vector<double> x0) : state_sol_(4, 0.0), actuator_sol_(2, 0.0), x0_(x0)
+// IpoptMPCOneStep::IpoptMPCOneStep(std::vector<double> x0,
+//                                  std::vector<std::vector<double>> wps) : state_sol_(4, 0.0), 
+//                                                                          actuator_sol_(2, 0.0), 
+//                                                                          x0_(x0)
+// IpoptMPCOneStep::IpoptMPCOneStep() : waypoints_( { {279.02,-182.26,294.22,-176.02,287.39,-178.82,1.9603},
+//                                                    {276.62,-172.5,291.29,-167.3,284.2,-169.82,1.9115},
+//                                                    {272.91,-160.58,287.16,-155.43,279.94,-158.03,1.9174} } ),
+//                                      x0_( { 288.0, -178.0, 2.0, 19.0 } ),
+//                                      cl_x_( {287.39, 284.2, 279.97} ),
+//                                      cl_y_( {-178.82, -169.82, -158.03} ),
+//                                      cl_phi_( {1.9603, 1.9115, 1.9174} )
+IpoptMPCOneStep::IpoptMPCOneStep()
 {
-  readRoadmapFromCSV("/home/honda/git/UdacityMPC/mpc_to_line/roadmap.csv");
+//   readRoadmapFromCSV("/home/honda/git/UdacityMPC/mpc_to_line/roadmap.csv");
   // readRoadmapFromCSV("/home/ethan/git/UdacityMPC/mpc_to_line/roadmap.csv");
-
-  // parse waypoints_ to center line (x, y, phi)
-  for (auto& wp : waypoints_)
-  {
-    cl_x_.push_back( wp[4] );
-    cl_y_.push_back( wp[5] );
-    cl_phi_.push_back( atan(wp[6]) ); // slope to direction angle in [rad]
-  }
+//   waypoints_ = { {279.02,-182.26,294.22,-176.02,287.39,-178.82,1.9603},
+//                  {276.62,-172.5,291.29,-167.3,284.2,-169.82,1.9115},
+//                  {272.91,-160.58,287.16,-155.43,279.94,-158.03,1.9174} };
+//   x0_ = { 288.0, -178.0, 2.0, 19.0 };
+//   // parse waypoints_ to center line (x, y, phi)
+//   for (auto& wp : waypoints_)
+//   {
+//     cl_x_.push_back( wp[4] );
+//     cl_y_.push_back( wp[5] );
+//     cl_phi_.push_back( wp[6] ); // slope to direction angle in [rad]
+//   }
+//   map_sz_ = waypoints_.size();
 }
 
 // destructor
@@ -74,7 +101,7 @@ bool IpoptMPCOneStep::get_nlp_info(Ipopt::Index& n, Ipopt::Index& m, Ipopt::Inde
   nnz_jac_g = 15 * (N - 1); // 4 + 4 + 4 + 3
 
   // related to hessian
-  nnz_h_lag = 1000 * N; // ??? // crucial change: ignoring it
+  nnz_h_lag = 6 * N - 2 + 3 * (N - 1); // crucial change: still need proving
 
   // use the C style indexing (0-based)
   index_style = TNLP::C_STYLE;
@@ -145,6 +172,7 @@ bool IpoptMPCOneStep::get_starting_point(Ipopt::Index n, bool init_x, Ipopt::Num
                                   Ipopt::Index m, bool init_lambda,
                                   Ipopt::Number* lambda)
 {
+  std::vector<double> x0     =  { 288.0, -178.0, 2.0, 19.0 };
   // verbosely test
   std::cout << "get_starting_point() starts to work" << std::endl;
 
@@ -170,10 +198,15 @@ bool IpoptMPCOneStep::get_starting_point(Ipopt::Index n, bool init_x, Ipopt::Num
     x[i] = 0.0;
   }
   // Set the initial variable values
-  x[x_start]   = x0_[0];
-  x[y_start]   = x0_[1];
-  x[psi_start] = x0_[2];
-  x[v_start]   = x0_[3];
+  x[x_start]   = x0[0];
+  x[y_start]   = x0[1];
+  x[psi_start] = x0[2];
+  x[v_start]   = x0[3];
+
+  x[x_start + 1]   =  x[x_start] + x[v_start] * cos( x[psi_start] ) * dt; 
+  x[y_start + 1]   =  x[y_start] + x[v_start] * sin( x[psi_start] ) * dt; 
+  x[psi_start + 1] =  x[psi_start] + x[v_start] / Lf * x[delta_start] * dt;
+  x[v_start + 1]   =  x[v_start] + x[a_start] * dt;
 
   // verbosely test
   std::cout << "get_starting_point() seems to be initialized correct" << std::endl;
@@ -184,6 +217,12 @@ bool IpoptMPCOneStep::get_starting_point(Ipopt::Index n, bool init_x, Ipopt::Num
 // returns the value of the objective function
 bool IpoptMPCOneStep::eval_f(Ipopt::Index n, const Ipopt::Number* x, bool new_x, Ipopt::Number& obj_value)
 {
+  int map_sz = 3;
+  std::vector<double> x0     =  { 288.0, -178.0, 2.0, 19.0 };
+  std::vector<double> cl_x   =  { 287.39, 284.2, 279.97 };
+  std::vector<double> cl_y   =  { -178.82, -169.82, -158.03 };
+  std::vector<double> cl_phi =  { 1.9603, 1.9115, 1.9174 };
+
   // verbosely test
   std::cout << "eval_f() starts to work" << std::endl;
 
@@ -194,24 +233,33 @@ bool IpoptMPCOneStep::eval_f(Ipopt::Index n, const Ipopt::Number* x, bool new_x,
    * obj_value = x[0] * x[3] * (x[0] + x[1] + x[2]) + x[2];
    */
   obj_value = 0.0;
+
+//   obj_value = (x[x_start] - cl_x_[0]) * (x[x_start] - cl_x_[0]) + (x[y_start] - cl_y_[0]) * (x[y_start] - cl_y_[0]) +
+//               (x[x_start + 1] - cl_x_[1]) * (x[x_start + 1] - cl_x_[1]) + (x[y_start + 1] - cl_y_[1]) * (x[y_start + 1] - cl_y_[1]) +
+//               (x[psi_start] - cl_phi_[0]) * (x[psi_start] - cl_phi_[0]) + (x[psi_start + 1] - cl_phi_[1]) * (x[psi_start + 1] - cl_phi_[1]) +
+//               pow( x[v_start] - ref_v, 2 ) + pow( x[v_start + 1] - ref_v, 2 ) + pow( x[delta_start + 1], 2 ) + pow( x[a_start + 1], 2 );
+
+
   for (Ipopt::Index i = 0; i < N; i++)
   {
-    std::vector<double> dist(map_sz_, 0.0);
+
+    std::vector<double> dist(map_sz, 0.0);
 
     /* find the closest segment to the current position */
     // construct the dist vector at each step
-    // for (Ipopt::Index j = 0; j < map_sz_; j++)
-    //   dist[j] = pow( x[x_start + i] - cl_x_[j], 2 ) + pow( x[y_start + i] - cl_y_[j], 2 );
-    // // find the closest element
-    // auto closest = std::min_element( dist.begin(), dist.end() );
-    // int closest_idx = closest - dist.begin();
-    int closest_idx = i * 2; // dummy
+    for (Ipopt::Index j = 0; j < map_sz; j++)
+      dist[j] = pow( x[x_start + i] - cl_x[j], 2 ) + pow( x[y_start + i] - cl_y[j], 2 );
+    // find the closest element
+    auto closest = std::min_element( dist.begin(), dist.end() );
+    int closest_idx = closest - dist.begin();
+    // int closest_idx = i * 2; // dummy
 
     /* contribute to obj_value */
     // Part I: cross-track error (CTE)
-    obj_value += dist[closest_idx];
+    // obj_value += dist[closest_idx];
+    obj_value += pow( x[x_start + i] - cl_x[closest_idx], 2 ) +  pow( x[y_start + i] - cl_y[closest_idx], 2 );
     // Part II: heading angle error
-    obj_value += pow( x[psi_start + i] - cl_phi_[closest_idx], 2 );
+    obj_value += pow( x[psi_start + i] - cl_phi[closest_idx], 2 );
     // Part III: longitudinal velocity error
     obj_value += pow( x[v_start + i] - ref_v, 2 );
     if (i < N - 1)
@@ -221,7 +269,8 @@ bool IpoptMPCOneStep::eval_f(Ipopt::Index n, const Ipopt::Number* x, bool new_x,
       // part V (TODO): actuator changing rate limit
     }
   }
-
+  
+  std::cout << "obj_value = " << obj_value << std::endl;
   // verbosely test
   std::cout << "eval_f() seems to be initialzied correct" << std::endl;
 
@@ -247,23 +296,32 @@ bool IpoptMPCOneStep::eval_grad_f(Ipopt::Index n, const Ipopt::Number* x, bool n
 
   for (Ipopt::Index i = 0; i < N; i++)
   {
-    std::vector<double> dist(map_sz_, 0.0);
+    int map_sz = 3;
+    std::vector<double> x0     =  { 288.0, -178.0, 2.0, 19.0 };
+    std::vector<double> cl_x   =  { 287.39, 284.2, 279.97 };
+    std::vector<double> cl_y   =  { -178.82, -169.82, -158.03 };
+    std::vector<double> cl_phi =  { 1.9603, 1.9115, 1.9174 };
+    std::vector<double> dist(map_sz, 0.0);
 
     /* find the closest segment to the current position */
     // construct the dist vector at each step
-    // for (Ipopt::Index j = 0; j < map_sz_; j++)
-    //   dist[j] = pow( x[x_start + i] - cl_x_[j], 2 ) + pow( x[y_start + i] - cl_y_[j], 2 );
-    // // find the closest element
-    // auto closest = std::min_element( dist.begin(), dist.end() );
-    // int closest_idx = closest - dist.begin();
-    int closest_idx = i * 2; // dummy
+    for (Ipopt::Index j = 0; j < map_sz; j++)
+      dist[j] = pow( x[x_start + i] - cl_x[j], 2 ) + pow( x[y_start + i] - cl_y[j], 2 );
+    // find the closest element
+    auto closest = std::min_element( dist.begin(), dist.end() );
+    int closest_idx = closest - dist.begin();
+    // int closest_idx = i * 2; // dummy
+
+    // std::cout << "closest_idx = " << closest_idx << std::endl;
+    // std::cout << "cl_x_[closest_idx] = " << cl_x_[closest_idx] << std::endl;
+    // std::cout << "cl_y_[closest_idx] = " << cl_y_[closest_idx] << std::endl;
 
     /* contribute to grad_f */
     // Part I: cross-track error (CTE)
-    grad_f[x_start + i]   =  2 * ( x[x_start + i] - cl_x_[closest_idx] );
-    grad_f[y_start + i]   =  2 * ( x[y_start + i] - cl_y_[closest_idx] );
+    grad_f[x_start + i]   =  2 * ( x[x_start + i] - cl_x[closest_idx] );
+    grad_f[y_start + i]   =  2 * ( x[y_start + i] - cl_y[closest_idx] );
     // Part II: heading angle error
-    grad_f[psi_start + i] =  2 * ( x[psi_start + i] - cl_phi_[closest_idx] );
+    grad_f[psi_start + i] =  2 * ( x[psi_start + i] - cl_phi[closest_idx] );
     // Part III: longitudinal velocity error
     grad_f[v_start + i]   =  2 * ( x[v_start + i] - ref_v );
     if (i < N - 1)
@@ -309,10 +367,10 @@ bool IpoptMPCOneStep::eval_g(Ipopt::Index n, const Ipopt::Number* x, bool new_x,
 
   for (Ipopt::Index i = 0; i < N - 1; i++)
   {
-    g[x_start + i]   =  x[x_start + i]   + x[v_start + i] * cos( x[psi_start + i] ) * dt  - x[x_start + i + 1]   ;
-    g[y_start + i]   =  x[y_start + i]   + x[v_start + i] * sin( x[psi_start + i] ) * dt  - x[x_start + i + 1]   ;
-    g[psi_start + i] =  x[psi_start + i] + x[v_start + i] / x[delta_start + i] * dt       - x[psi_start + i + 1] ;
-    g[v_start + i]   =  x[v_start + i]   + x[a_start + i] * dt                            - x[v_start + i + 1]   ;
+    g[4 * i]       =  x[x_start + i]   + x[v_start + i] * cos( x[psi_start + i] ) * dt  - x[x_start + i + 1]   ;
+    g[4 * i + 1]   =  x[y_start + i]   + x[v_start + i] * sin( x[psi_start + i] ) * dt  - x[x_start + i + 1]   ;
+    g[4 * i + 2]   =  x[psi_start + i] + x[v_start + i] / Lf * x[delta_start + i] * dt  - x[psi_start + i + 1] ;
+    g[4 * i + 3]   =  x[v_start + i]   + x[a_start + i] * dt                            - x[v_start + i + 1]   ;
   }
 
   // verbosely test
@@ -561,12 +619,12 @@ void IpoptMPCOneStep::finalize_solution(Ipopt::SolverReturn status,
   std::cout << "finalize_solution() starts to work" << std::endl;
 
   // parse the solution to each state vector & actuator vector
-  state_sol_[0]     =  x[x_start + 1];
-  state_sol_[1]     =  x[y_start + 1];
-  state_sol_[2]     =  x[psi_start + 1];
-  state_sol_[3]     =  x[v_start + 1];
-  actuator_sol_[0]  =  x[delta_start];
-  actuator_sol_[1]  =  x[a_start];
+//   state_sol_[0]     =  x[x_start + 1];
+//   state_sol_[1]     =  x[y_start + 1];
+//   state_sol_[2]     =  x[psi_start + 1];
+//   state_sol_[3]     =  x[v_start + 1];
+//   actuator_sol_[0]  =  x[delta_start];
+//   actuator_sol_[1]  =  x[a_start];
 
   // [Simple reference]
   // For this example, we write the solution to the console
