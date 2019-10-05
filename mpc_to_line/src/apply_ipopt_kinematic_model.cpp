@@ -15,7 +15,7 @@
 using namespace Ipopt;
 
 /* global variable */
-const double dt = 0.02;
+const double dt = 5; // longer time: 0.02, 0.2, 2, 2.5, 4, 
 const double v_ref = 20.0;
 const double Lf = 2.67;
 
@@ -144,8 +144,9 @@ bool TDNaive::eval_f(Index n, const Number* x, bool new_x, Number& obj_value)
   obj_value += pow(x[4] - cl_phi[cl_idx_x0], 2);
   obj_value += pow(x[6] - v_ref, 2);
   // position 1
-  obj_value += pow(x[1] - cl_x[cl_idx_x1], 2) + pow(x[3] - cl_y[cl_idx_x1], 2);
-  obj_value += pow(x[5] - cl_phi[cl_idx_x1], 2);
+  // pay more attention on the second position tracking performance
+  obj_value += 10 * pow(x[1] - cl_x[cl_idx_x1], 2) + 10 * pow(x[3] - cl_y[cl_idx_x1], 2);
+  obj_value += 10 * pow(x[5] - cl_phi[cl_idx_x1], 2);
   obj_value += pow(x[7] - v_ref, 2);
   // actuators
   obj_value += x[8] * x[8];
@@ -178,11 +179,11 @@ bool TDNaive::eval_grad_f(Index n, const Number* x, bool new_x, Number* grad_f)
   int cl_idx_x1 = closest_x1 - dist_x1.begin(); 
 
   grad_f[0] = 2 * ( x[0] - cl_x[cl_idx_x0] );
-  grad_f[1] = 2 * ( x[1] - cl_x[cl_idx_x1] );
+  grad_f[1] = 2 * ( x[1] - cl_x[cl_idx_x1] ) * 10;
   grad_f[2] = 2 * ( x[2] - cl_y[cl_idx_x0] );
-  grad_f[3] = 2 * ( x[3] - cl_y[cl_idx_x1] );
+  grad_f[3] = 2 * ( x[3] - cl_y[cl_idx_x1] ) * 10;
   grad_f[4] = 2 * ( x[4] - cl_phi[cl_idx_x0] );
-  grad_f[5] = 2 * ( x[5] - cl_phi[cl_idx_x1] );
+  grad_f[5] = 2 * ( x[5] - cl_phi[cl_idx_x1] ) * 10;
   grad_f[6] = 2 * ( x[6] - v_ref );
   grad_f[7] = 2 * ( x[7] - v_ref );
   grad_f[8] = 2 * x[8];
@@ -307,11 +308,11 @@ bool TDNaive::eval_h(Index n, const Number* x, bool new_x,
 
     // fill the objective portion
     values[0] += obj_factor * 2; // 0,0
-    values[1] += obj_factor * 2; // 1,1
+    values[1] += obj_factor * 2 * 10; // 1,1
     values[2] += obj_factor * 2; // 2,2
-    values[3] += obj_factor * 2; // 3,3
+    values[3] += obj_factor * 2 * 10; // 3,3
     values[4] += obj_factor * 2; // 4,4
-    values[5] += obj_factor * 2; // 0,0
+    values[5] += obj_factor * 2 * 10; // 0,0
     values[6] += obj_factor * 2; // 1,1
     values[7] += obj_factor * 2; // 2,2
     values[8] += obj_factor * 2; // 3,3
