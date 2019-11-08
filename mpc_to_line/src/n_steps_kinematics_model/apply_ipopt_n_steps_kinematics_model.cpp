@@ -1,12 +1,6 @@
-// Copyright (C) 2005, 2006 International Business Machines and others.
-// All Rights Reserved.
-// This code is published under the Eclipse Public License.
-//
-// $Id: TDNaive.cpp 2005 2011-06-06 12:55:16Z stefan $
-//
-// Authors:  Carl Laird, Andreas Waechter     IBM    2005-08-16
+// Author: Yusen Chen   2019-11-08
 
-#include "apply_ipopt_kinematic_model.hpp"
+#include "apply_ipopt_n_steps_kinematics_model.hpp"
 #include "IpIpoptApplication.hpp"
 #include <cassert>
 #include <iostream>
@@ -15,32 +9,47 @@
 using namespace Ipopt;
 
 /* global variable */
-const double dt = 5; // longer time: 0.02, 0.2, 2, 2.5, 4, 
+
+// physical properties
 const double v_ref = 20.0;
 const double Lf = 2.67;
 
+// iteration steps
+const double dt    =  5.0;         // longer time: 0.02, 0.2, 2, 2.5, 4, 
+const int N        =  2;           // steps
+const int x_st     =  0;           // x var start idx
+const int y_st     =  N;           // y var start idx
+const int phi_st   =  2 * N;       // phi var start idx
+const int v_st     =  3 * N;       // v var start idx
+const int delta_st =  4 * N;       // delta var start idx
+const int a_st     =  5 * N - 1;   // a var start idx
+
+
 
 // constructor
-TDNaive::TDNaive()
+NStepsKM::NStepsKM()
 {}
 
 //destructor
-TDNaive::~TDNaive()
+NStepsKM::~NStepsKM()
 {}
 
 // returns the size of the problem
-bool TDNaive::get_nlp_info(Index& n, Index& m, Index& nnz_jac_g,
+bool NStepsKM::get_nlp_info(Index& n, Index& m, Index& nnz_jac_g,
                              Index& nnz_h_lag, IndexStyleEnum& index_style)
 {
-  // The problem described in TDNaive.hpp has 4 variables, x[0] through x[3]
-  n = 10;
+  // The problem described in NStepsKM.hpp has 4 variables, x[0] through x[3]
+  n = 6 * N - 2; // 4 * N + 2 * (N - 1) = 6 * N - 2
 
-  // one equality constraint and one inequality constraint
-  m = 4;
+  // equality constraints 
+  // (it can be equality or inequality ones, here we only have eqaulity ones)
+  m = 4 * N - 4;
 
+  // TODO: modify it
   // in this example the jacobian is dense and contains 8 nonzeros
-  nnz_jac_g = 15;
+  nnz_jac_g = 15 * N - 15; // 15 * (N - 1)
 
+  // TODO: modify it
   // the hessian is also dense and has 16 total nonzeros, but we
   // only need the lower left corner (since it is symmetric)
   nnz_h_lag = 12;
@@ -52,43 +61,33 @@ bool TDNaive::get_nlp_info(Index& n, Index& m, Index& nnz_jac_g,
 }
 
 // returns the variable bounds
-bool TDNaive::get_bounds_info(Index n, Number* x_l, Number* x_u,
+bool NStepsKM::get_bounds_info(Index n, Number* x_l, Number* x_u,
                                 Index m, Number* g_l, Number* g_u)
 {
   // here, the n and m we gave IPOPT in get_nlp_info are passed back to us.
   // If desired, we could assert to make sure they are what we think they are.
-  assert(n == 10);
-  assert(m == 4);
+  assert( n == (6 * N - 2) );
+  assert( m == (4 * N - 4) );
 
-  // the variables have lower bounds of 1
-  for (Index i=0; i<10; i++) {
+  // the variables have lower bounds & upper bounds
+  for (Index i = 0; i < n; i++) 
+  {
     x_l[i] = -500;
-  }
-
-  // the variables have upper bounds of 5
-  for (Index i=0; i<10; i++) {
     x_u[i] = 500;
   }
 
-  // the first constraint g1 has a lower bound of 25
-  g_l[0] = 0.0;
-  // the first constraint g1 has NO upper bound, here we set it to 2e19.
-  // Ipopt interprets any number greater than nlp_upper_bound_inf as
-  // infinity. The default value of nlp_upper_bound_inf and nlp_lower_bound_inf
-  // is 1e19 and can be changed through ipopt options.
-  g_u[0] = 0.0;
-
-  // the second constraint g2 is an equality constraint, so we set the
-  // upper and lower bound to the same value
-  g_l[1] = g_u[1] = 0.0;
-  g_l[2] = g_u[2] = 0.0;
-  g_l[3] = g_u[3] = 0.0;
+  // the constraints are equality ones, i.e., all of them has val equals to 0
+  for (Index i = 0; i < m; i++)
+  {
+      g_l[i] = 0.0;
+      g_u[i] = 0.0;
+  }
 
   return true;
 }
 
 // returns the initial point for the problem
-bool TDNaive::get_starting_point(Index n, bool init_x, Number* x,
+bool NStepsKM::get_starting_point(Index n, bool init_x, Number* x,
                                    bool init_z, Number* z_L, Number* z_U,
                                    Index m, bool init_lambda,
                                    Number* lambda)
@@ -115,7 +114,7 @@ bool TDNaive::get_starting_point(Index n, bool init_x, Number* x,
 }
 
 // returns the value of the objective function
-bool TDNaive::eval_f(Index n, const Number* x, bool new_x, Number& obj_value)
+bool NStepsKM::eval_f(Index n, const Number* x, bool new_x, Number& obj_value)
 {
   assert(n == 10);
 
@@ -156,7 +155,7 @@ bool TDNaive::eval_f(Index n, const Number* x, bool new_x, Number& obj_value)
 }
 
 // return the gradient of the objective function grad_{x} f(x)
-bool TDNaive::eval_grad_f(Index n, const Number* x, bool new_x, Number* grad_f)
+bool NStepsKM::eval_grad_f(Index n, const Number* x, bool new_x, Number* grad_f)
 {
   assert(n == 10);
 
@@ -193,7 +192,7 @@ bool TDNaive::eval_grad_f(Index n, const Number* x, bool new_x, Number* grad_f)
 }
 
 // return the value of the constraints: g(x)
-bool TDNaive::eval_g(Index n, const Number* x, bool new_x, Index m, Number* g)
+bool NStepsKM::eval_g(Index n, const Number* x, bool new_x, Index m, Number* g)
 {
   assert(n == 10);
   assert(m == 4);
@@ -207,7 +206,7 @@ bool TDNaive::eval_g(Index n, const Number* x, bool new_x, Index m, Number* g)
 }
 
 // return the structure or values of the jacobian
-bool TDNaive::eval_jac_g(Index n, const Number* x, bool new_x,
+bool NStepsKM::eval_jac_g(Index n, const Number* x, bool new_x,
                          Index m, Index nele_jac, Index* iRow, Index *jCol,
                          Number* values)
 {
@@ -221,7 +220,7 @@ bool TDNaive::eval_jac_g(Index n, const Number* x, bool new_x,
     iRow[2] = 0;
     jCol[2] = 4;
     iRow[3] = 0;
-    jCol[3] = 6; // previously it was 5, should be 6
+    jCol[3] = 5;
     iRow[4] = 1;
     jCol[4] = 2;
     iRow[5] = 1;
@@ -244,6 +243,40 @@ bool TDNaive::eval_jac_g(Index n, const Number* x, bool new_x,
     jCol[13] = 7;
     iRow[14] = 3;
     jCol[14] = 9;
+
+    for (Index i = 0; i < N - 1; i++)
+    {
+        iRow[i * 15] = 4 * i;
+        jCol[i * 15] = x_st + i;
+        iRow[i * 15 + 1] = 4 * i;
+        jCol[i * 15 + 1] = x_st + i + 1;
+        iRow[i * 15 + 2] = 4 * i;
+        jCol[i * 15 + 2] = phi_st + i;
+        iRow[i * 15 + 3] = 4 * i;
+        jCol[i * 15 + 3] = v_st + i;
+        iRow[i * 15 + 4] = 4 * i + 1;
+        jCol[i * 15 + 4] = y_st + i;
+        iRow[i * 15 + 5] = 4 * i + 1;
+        jCol[i * 15 + 5] = y_st + i + 1;
+        iRow[i * 15 + 6] = 4 * i + 1;
+        jCol[i * 15 + 6] = phi_st + i;
+        iRow[i * 15 + 7] = 4 * i + 1;
+        jCol[i * 15 + 7] = v_st + i;
+        iRow[i * 15 + 8] = 4 * i + 2;
+        jCol[i * 15 + 8] = phi_st + i;
+        iRow[i * 15 + 9] = 4 * i + 2;
+        jCol[i * 15 + 9] = phi_st + i + 1;
+        iRow[i * 15 + 10] = 4 * i + 2;
+        jCol[i * 15 + 10] = v_st + i;
+        iRow[i * 15 + 11] = 4 * i + 2;
+        jCol[i * 15 + 11] = delta_st + i;
+        iRow[i * 15 + 12] = 4 * i + 3;
+        jCol[i * 15 + 12] = v_st + i;
+        iRow[i * 15 + 13] = 4 * i + 3;
+        jCol[i * 15 + 13] = v_st + i + 1;
+        iRow[i * 15 + 14] = 4 * i + 3;
+        jCol[i * 15 + 14] = a_st + i;
+    }
   }
   else {
     // return the values of the jacobian of the constraints
@@ -272,7 +305,7 @@ bool TDNaive::eval_jac_g(Index n, const Number* x, bool new_x,
 }
 
 //return the structure or values of the hessian
-bool TDNaive::eval_h(Index n, const Number* x, bool new_x,
+bool NStepsKM::eval_h(Index n, const Number* x, bool new_x,
                        Number obj_factor, Index m, const Number* lambda,
                        bool new_lambda, Index nele_hess, Index* iRow,
                        Index* jCol, Number* values)
@@ -329,7 +362,7 @@ bool TDNaive::eval_h(Index n, const Number* x, bool new_x,
   return true;
 }
 
-void TDNaive::finalize_solution(SolverReturn status,
+void NStepsKM::finalize_solution(SolverReturn status,
                                   Index n, const Number* x, const Number* z_L, const Number* z_U,
                                   Index m, const Number* g, const Number* lambda,
                                   Number obj_value,
@@ -367,7 +400,7 @@ int main(int argv, char* argc[])
 {
   // Create a new instance of your nlp
   //  (use a SmartPtr, not raw)
-  SmartPtr<TNLP> mynlp = new TDNaive();
+  SmartPtr<TNLP> mynlp = new NStepsKM();
 
   // Create a new instance of IpoptApplication
   //  (use a SmartPtr, not raw)
