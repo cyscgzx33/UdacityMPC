@@ -34,6 +34,7 @@ NStepsKM::NStepsKM()
 NStepsKM::~NStepsKM()
 {}
 
+// Status: pending
 // returns the size of the problem
 bool NStepsKM::get_nlp_info(Index& n, Index& m, Index& nnz_jac_g,
                              Index& nnz_h_lag, IndexStyleEnum& index_style)
@@ -45,7 +46,7 @@ bool NStepsKM::get_nlp_info(Index& n, Index& m, Index& nnz_jac_g,
   // (it can be equality or inequality ones, here we only have eqaulity ones)
   m = 4 * N - 4;
 
-  // TODO: modify it
+  // TODO(done): modify it
   // in this example the jacobian is dense and contains 8 nonzeros
   nnz_jac_g = 15 * N - 15; // 15 * (N - 1)
 
@@ -60,6 +61,7 @@ bool NStepsKM::get_nlp_info(Index& n, Index& m, Index& nnz_jac_g,
   return true;
 }
 
+// Status: done
 // returns the variable bounds
 bool NStepsKM::get_bounds_info(Index n, Number* x_l, Number* x_u,
                                 Index m, Number* g_l, Number* g_u)
@@ -86,6 +88,7 @@ bool NStepsKM::get_bounds_info(Index n, Number* x_l, Number* x_u,
   return true;
 }
 
+// Status: pending
 // returns the initial point for the problem
 bool NStepsKM::get_starting_point(Index n, bool init_x, Number* x,
                                    bool init_z, Number* z_L, Number* z_U,
@@ -113,6 +116,7 @@ bool NStepsKM::get_starting_point(Index n, bool init_x, Number* x,
   return true;
 }
 
+// Status: pending
 // returns the value of the objective function
 bool NStepsKM::eval_f(Index n, const Number* x, bool new_x, Number& obj_value)
 {
@@ -154,6 +158,7 @@ bool NStepsKM::eval_f(Index n, const Number* x, bool new_x, Number& obj_value)
   return true;
 }
 
+// Status: pending
 // return the gradient of the objective function grad_{x} f(x)
 bool NStepsKM::eval_grad_f(Index n, const Number* x, bool new_x, Number* grad_f)
 {
@@ -191,20 +196,25 @@ bool NStepsKM::eval_grad_f(Index n, const Number* x, bool new_x, Number* grad_f)
   return true;
 }
 
+// Status: done
 // return the value of the constraints: g(x)
 bool NStepsKM::eval_g(Index n, const Number* x, bool new_x, Index m, Number* g)
 {
-  assert(n == 10);
-  assert(m == 4);
+  assert( n == (6 * N - 2) );
+  assert( m == (4 * N - 4) );
 
-  g[0] = x[0] + x[6] * cos( x[4] ) * dt - x[1];
-  g[1] = x[2] + x[6] * sin( x[4] ) * dt - x[3];
-  g[2] = x[4] + x[6] * x[8] / Lf * dt - x[5];
-  g[3] = x[6] + x[9] * dt - x[7];
+  for (Index i = 0; i < N - 1; i++)
+  {
+      g[4 * i]      =  x[x_st + i] + x[v_st + i] * cos( x[phi_st + i] ) * dt - x[x_st + i + 1];
+      g[4 * i + 1]  =  x[y_st + i] + x[v_st + i] * sin( x[phi_st + i] ) * dt - x[y_st + i + 1];
+      g[4 * i + 2]  =  x[phi_st + i] + x[v_st + i] * x[delta_st + i] * dt / Lf - x[phi_st + i + 1];
+      g[4 * i + 3]  =  x[v_st + i] + x[a_st + i] * dt - x[v_st + i + 1];
+  }
 
   return true;
 }
 
+// Status: done
 // return the structure or values of the jacobian
 bool NStepsKM::eval_jac_g(Index n, const Number* x, bool new_x,
                          Index m, Index nele_jac, Index* iRow, Index *jCol,
@@ -213,37 +223,6 @@ bool NStepsKM::eval_jac_g(Index n, const Number* x, bool new_x,
   if (values == NULL) {
     // return the structure of the jacobian
     // this particular jacobian is dense
-    iRow[0] = 0;
-    jCol[0] = 0;
-    iRow[1] = 0;
-    jCol[1] = 1;
-    iRow[2] = 0;
-    jCol[2] = 4;
-    iRow[3] = 0;
-    jCol[3] = 5;
-    iRow[4] = 1;
-    jCol[4] = 2;
-    iRow[5] = 1;
-    jCol[5] = 3;
-    iRow[6] = 1;
-    jCol[6] = 4;
-    iRow[7] = 1;
-    jCol[7] = 6;
-    iRow[8] = 2;
-    jCol[8] = 4;
-    iRow[9] = 2;
-    jCol[9] = 5;
-    iRow[10] = 2;
-    jCol[10] = 6;
-    iRow[11] = 2;
-    jCol[11] = 8;
-    iRow[12] = 3;
-    jCol[12] = 6;
-    iRow[13] = 3;
-    jCol[13] = 7;
-    iRow[14] = 3;
-    jCol[14] = 9;
-
     for (Index i = 0; i < N - 1; i++)
     {
         iRow[i * 15] = 4 * i;
@@ -280,30 +259,33 @@ bool NStepsKM::eval_jac_g(Index n, const Number* x, bool new_x,
   }
   else {
     // return the values of the jacobian of the constraints
+    for (Index i = 0; i < N - 1; i++)
+    {
+        values[i * 15] = 1.0;
+        values[i * 15 + 1] = -1.0;
+        values[i * 15 + 2] = -sin( x[phi_st + i] ) * x[v_st + i] * dt;
+        values[i * 15 + 3] = cos( x[phi_st + i] ) * dt;
 
-    values[0] = 1.0; // 0,0
-    values[1] = -1.0; // 0,1
-    values[2] = -sin( x[4] ) * x[6] * dt; // 0,4
-    values[3] = cos( x[4] ) * dt; // 0,6
+        values[i * 15 + 4] = 1.0;
+        values[i * 15 + 5] = -1.0;
+        values[i * 15 + 6] = cos( x[phi_st + i] ) * x[v_st + i] * dt;
+        values[i * 15 + 7] = sin( x[phi_st + i] ) * dt;
 
-    values[4] = 1.0; // 1,2
-    values[5] = -1.0; // 1,3
-    values[6] = cos( x[4] ) * x[6] * dt; // 1,4
-    values[7] = sin( x[4] ) * dt; // 1,6
+        values[i * 15 + 8] = 1.0;
+        values[i * 15 + 9] = -1.0;
+        values[i * 15 + 10] = x[delta_st + i] * dt / Lf;
+        values[i * 15 + 11] = x[v_st + i] * dt / Lf;
 
-    values[8] = 1.0; // 2,4
-    values[9] = -1.0; // 2,5
-    values[10] = x[8] * dt / Lf; // 2,6
-    values[11] = x[6] * dt / Lf; // 2,8
-
-    values[12] = 1.0; // 3,6
-    values[13] = -1.0; // 3,7
-    values[14] = dt; // 3,9
+        values[i * 15 + 12] = 1.0;
+        values[i * 15 + 13] = -1.0;
+        values[i * 15 + 14] = dt;
+    }
   }
 
   return true;
 }
 
+// Status: pending
 //return the structure or values of the hessian
 bool NStepsKM::eval_h(Index n, const Number* x, bool new_x,
                        Number obj_factor, Index m, const Number* lambda,
@@ -316,7 +298,7 @@ bool NStepsKM::eval_h(Index n, const Number* x, bool new_x,
     // triangle only.
 
     // the hessian for this problem is actually dense
-    Index idx=0;
+    Index idx = 0;
     for (Index row = 0; row < 10; row++) {
         iRow[idx] = row;
         jCol[idx] = row;
