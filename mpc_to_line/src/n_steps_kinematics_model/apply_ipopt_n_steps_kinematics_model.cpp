@@ -11,12 +11,12 @@ using namespace Ipopt;
 /* global variable */
 
 // physical properties
-const double v_ref = 20.0;
+const double v_ref = 20.0; // [20.0]
 const double Lf = 2.67;
 
 // iteration steps
-const double dt    =  5.0;         // longer time: 0.02, 0.2, 2, 2.5, 4, 
-const int N        =  2;           // steps
+const double dt    =  1.0;         // longer time: 0.02, 0.2, 2, 2.5, 4, 5
+const int N        =  3;           // steps
 const int x_st     =  0;           // x var start idx
 const int y_st     =  N;           // y var start idx
 const int phi_st   =  2 * N;       // phi var start idx
@@ -104,6 +104,8 @@ bool NStepsKM::get_starting_point(Index n, bool init_x, Number* x,
   assert(init_lambda == false);
 
   // initialize to the given starting point
+  // Example: N = 2
+  /*   
   x[0] = 287.0;
   x[1] = 282.1;
   x[2] = -178.0;
@@ -113,7 +115,27 @@ bool NStepsKM::get_starting_point(Index n, bool init_x, Number* x,
   x[6] = 18.0;
   x[7] = 18.4;
   x[8] = 0.5;
-  x[9] = 2.0;
+  x[9] = 2.0; 
+  */
+
+  // Example: N = 3
+  x[0] = 287.0;
+  x[1] = 282.1;
+  x[2] = 279.0;
+  x[3] = -178.0;
+  x[4] = -168.2;
+  x[5] = -159.2;
+  x[6] = 1.95;
+  x[7] = 1.90;
+  x[8] = 1.91;
+  x[9] = 10.0;
+  x[10] = 11.0;
+  x[11] = 12.0;
+  x[12] = 0.5;
+  x[13] = 0.5;
+  x[14] = 2.0;
+  x[15] = 2.0;
+
   return true;
 }
 
