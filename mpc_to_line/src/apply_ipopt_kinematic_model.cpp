@@ -324,7 +324,7 @@ bool TDNaive::eval_h(Index n, const Number* x, bool new_x,
     values[10] += lambda[0] * ( -sin( x[4] ) ) * dt; // 6,4
     values[10] += lambda[1] * cos( x[4] ) * dt; // 6,4
 
-    values[11] += dt / Lf;
+    values[11] += lambda[2] * dt / Lf; // previously "lambda[2]" was omitted, not it's added
   }
   return true;
 }

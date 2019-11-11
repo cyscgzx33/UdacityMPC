@@ -35,7 +35,7 @@ NStepsKM::NStepsKM()
 NStepsKM::~NStepsKM()
 {}
 
-// Status: pending
+// Status: done
 // returns the size of the problem
 bool NStepsKM::get_nlp_info(Index& n, Index& m, Index& nnz_jac_g,
                              Index& nnz_h_lag, IndexStyleEnum& index_style)
@@ -54,7 +54,7 @@ bool NStepsKM::get_nlp_info(Index& n, Index& m, Index& nnz_jac_g,
   // TODO: modify it
   // the hessian is also dense and has 16 total nonzeros, but we
   // only need the lower left corner (since it is symmetric)
-  nnz_h_lag = 12;
+  nnz_h_lag = 7 * N - 4; // (6 * N - 2) + ( 2 * (N - 1) ) 
 
   // use the C style indexing (0-based)
   index_style = TNLP::C_STYLE;
@@ -121,7 +121,7 @@ bool NStepsKM::get_starting_point(Index n, bool init_x, Number* x,
 // returns the value of the objective function
 bool NStepsKM::eval_f(Index n, const Number* x, bool new_x, Number& obj_value)
 {
-  assert(n == 10);
+  assert( n == (6 * N - 2) );
 
   // map info
   std::vector<double> cl_x   =  { 287.39, 284.2, 279.97 };
@@ -286,7 +286,7 @@ bool NStepsKM::eval_jac_g(Index n, const Number* x, bool new_x,
   return true;
 }
 
-// Status: pending
+// Status: done
 //return the structure or values of the hessian
 bool NStepsKM::eval_h(Index n, const Number* x, bool new_x,
                        Number obj_factor, Index m, const Number* lambda,
@@ -299,21 +299,30 @@ bool NStepsKM::eval_h(Index n, const Number* x, bool new_x,
 
     // the hessian for this problem is actually dense
     Index idx = 0;
-    for (Index row = 0; row < 10; row++) {
-        iRow[idx] = row;
-        jCol[idx] = row;
-        idx++;
+
+    // for the grad_grad_f part:
+    // formulate an diagonal matrix first
+    for (Index row = 0; row < 6 * N - 2; row++)
+    {
+      iRow[idx] = row;
+      jCol[idx] = row;
+      idx++;
     }
 
-    // element 10
-    iRow[idx] = 6;
-    jCol[idx] = 4;
-    idx++;
+    // for the grad_grad_g part:
+    // formulate each non-zero element
+    for (Index i = 0; i <  N - 1; i++)
+    {
+      // for grad_grad_g_(i) & grad_grad_g_(i+1)
+      iRow[idx] = v_st + i;
+      jCol[idx] = phi_st + i;
+      idx++;
 
-    // element 11
-    iRow[idx] = 8;
-    jCol[idx] = 6;
-    idx++;
+      // for grad_grad_g(i+2)
+      iRow[idx] = delta_st + i;
+      jCol[idx] = v_st + i;
+      idx++;
+    }
 
     assert(idx == nele_hess);
   }
@@ -321,26 +330,40 @@ bool NStepsKM::eval_h(Index n, const Number* x, bool new_x,
     // return the values. This is a symmetric matrix, fill the lower left
     // triangle only
 
-    // fill the objective portion
-    values[0] += obj_factor * 2; // 0,0
-    values[1] += obj_factor * 2 * 10; // 1,1
-    values[2] += obj_factor * 2; // 2,2
-    values[3] += obj_factor * 2 * 10; // 3,3
-    values[4] += obj_factor * 2; // 4,4
-    values[5] += obj_factor * 2 * 10; // 0,0
-    values[6] += obj_factor * 2; // 1,1
-    values[7] += obj_factor * 2; // 2,2
-    values[8] += obj_factor * 2; // 3,3
-    values[9] += obj_factor * 2; // 4,4
+    Index idx = 0;
+    // for the grad_grad_f part:
+    // assign values affected by grad_grad_f
+    // Note (important): adjust the params after changing the weights of cost function 
+    for (Index row = 0; row < 6 * N - 2; row++)
+    {
+      values[idx] += obj_factor * 2;
+      idx++;
+    }
 
-    values[4] += lambda[0] * x[6] * cos( x[4] ) * dt; // 4,4
-    values[4] += lambda[1] * x[6] * ( -sin( x[4] ) ) * dt; // 4,4
+    // for the grad_grad_g part:
+    // assign values affected by grad_grad_g
+    for (Index i = 0; i <  N - 1; i++)
+    {
+      // for diagnal parts
+      // Note: the "idx" of each values happens to be equal to phi_st + i
+      values[phi_st + i] += lambda[4 * i] * x[v_st + i] * cos( x[phi_st + i] ) * dt;
+      values[phi_st + i] += lambda[4 * i  + 1] * x[v_st + i] * ( -sin( x[phi_st + i] ) ) * dt;
 
-    values[10] += lambda[0] * ( -sin( x[4] ) ) * dt; // 6,4
-    values[10] += lambda[1] * cos( x[4] ) * dt; // 6,4
+      // for non-diagnal parts
+      // Note: here we can only rely on "idx" to count where to fill in values
+      // grad_grad_g_(i) & grad_grad_g_(i+1)
+      values[idx] += lambda[4 * i] * ( -sin( x[phi_st + i] ) ) * dt;
+      values[idx] += lambda[4 * i + 1] * cos( x[phi_st + i] ) * dt;
+      idx++;
 
-    values[11] += dt / Lf;
+      // for grad_grad_g(i+2)
+      values[idx] += lambda[4 * i + 2] * dt / Lf;
+      idx++;
+    }
+
+    assert(idx == nele_hess);
   }
+
   return true;
 }
 
