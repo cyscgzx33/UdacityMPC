@@ -133,7 +133,7 @@ bool NStepsKM::eval_f(Index n, const Number* x, bool new_x, Number& obj_value)
 
   // for finding closest point
   int sz = cl_x.size();
-  std::vector<double> dist;
+  std::vector<double> dist(sz, 0.0);
 
   for (int i = 0; i < N; i++) // totally N steps
   {
@@ -182,7 +182,7 @@ bool NStepsKM::eval_grad_f(Index n, const Number* x, bool new_x, Number* grad_f)
 
   // for finding closest point
   int sz = cl_x.size();
-  std::vector<double> dist;
+  std::vector<double> dist(sz, 0.0);
 
   for (int i = 0; i < N; i++) // totally N steps
   {
