@@ -25,6 +25,7 @@ const int delta_st =  4 * N;       // delta var start idx
 const int a_st     =  5 * N - 1;   // a var start idx
 
 
+/* Definition of NStepsKM class methods & attributes */
 
 // constructor
 NStepsKM::NStepsKM()
@@ -292,7 +293,6 @@ bool NStepsKM::eval_h(Index n, const Number* x, bool new_x,
                        bool new_lambda, Index nele_hess, Index* iRow,
                        Index* jCol, Number* values)
 {
-
   if (values == NULL) {
     // return the structure. This is a symmetric matrix, fill the lower left
     // triangle only.
