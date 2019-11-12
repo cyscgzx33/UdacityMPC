@@ -11,7 +11,7 @@ using namespace Ipopt;
 /* global variable */
 
 // physical properties
-const double v_ref = 20.0; // [20.0]
+const double v_ref = 10.0; // [20.0]
 const double Lf = 2.67;
 
 // iteration steps
@@ -38,7 +38,7 @@ NStepsKM::~NStepsKM()
 // Status: done
 // returns the size of the problem
 bool NStepsKM::get_nlp_info(Index& n, Index& m, Index& nnz_jac_g,
-                             Index& nnz_h_lag, IndexStyleEnum& index_style)
+                            Index& nnz_h_lag, IndexStyleEnum& index_style)
 {
   // The problem described in NStepsKM.hpp has 4 variables, x[0] through x[3]
   n = 6 * N - 2; // 4 * N + 2 * (N - 1) = 6 * N - 2
@@ -128,9 +128,9 @@ bool NStepsKM::get_starting_point(Index n, bool init_x, Number* x,
   x[6] = 1.95;
   x[7] = 1.90;
   x[8] = 1.91;
-  x[9] = 10.0;
-  x[10] = 11.0;
-  x[11] = 12.0;
+  x[9] = 11.0;
+  x[10] = 10.0;
+  x[11] = 9.0;
   x[12] = 0.5;
   x[13] = 0.5;
   x[14] = 2.0;
