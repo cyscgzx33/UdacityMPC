@@ -11,12 +11,12 @@ using namespace Ipopt;
 /* global variable */
 
 // physical properties
-const double v_ref = 20.0;
+const double v_ref = 20.0; // [20.0]
 const double Lf = 2.67;
 
 // iteration steps
-const double dt    =  5.0;         // longer time: 0.02, 0.2, 2, 2.5, 4, 
-const int N        =  2;           // steps
+const double dt    =  1.0;         // longer time: 0.02, 0.2, 2, 2.5, 4, 5
+const int N        =  3;           // steps
 const int x_st     =  0;           // x var start idx
 const int y_st     =  N;           // y var start idx
 const int phi_st   =  2 * N;       // phi var start idx
@@ -25,6 +25,7 @@ const int delta_st =  4 * N;       // delta var start idx
 const int a_st     =  5 * N - 1;   // a var start idx
 
 
+/* Definition of NStepsKM class methods & attributes */
 
 // constructor
 NStepsKM::NStepsKM()
@@ -103,6 +104,8 @@ bool NStepsKM::get_starting_point(Index n, bool init_x, Number* x,
   assert(init_lambda == false);
 
   // initialize to the given starting point
+  // Example: N = 2
+  /*   
   x[0] = 287.0;
   x[1] = 282.1;
   x[2] = -178.0;
@@ -112,16 +115,37 @@ bool NStepsKM::get_starting_point(Index n, bool init_x, Number* x,
   x[6] = 18.0;
   x[7] = 18.4;
   x[8] = 0.5;
-  x[9] = 2.0;
+  x[9] = 2.0; 
+  */
+
+  // Example: N = 3
+  x[0] = 287.0;
+  x[1] = 282.1;
+  x[2] = 279.0;
+  x[3] = -178.0;
+  x[4] = -168.2;
+  x[5] = -159.2;
+  x[6] = 1.95;
+  x[7] = 1.90;
+  x[8] = 1.91;
+  x[9] = 10.0;
+  x[10] = 11.0;
+  x[11] = 12.0;
+  x[12] = 0.5;
+  x[13] = 0.5;
+  x[14] = 2.0;
+  x[15] = 2.0;
+
   return true;
 }
 
-// Status: pending
+// Status: done
 // returns the value of the objective function
 bool NStepsKM::eval_f(Index n, const Number* x, bool new_x, Number& obj_value)
 {
   assert( n == (6 * N - 2) );
 
+<<<<<<< HEAD
   // map info
   std::vector<double> cl_x   =  { 287.39,  284.2,   279.97,  276.07,  271.63,  265.64,  257.88,  251.96,  245.37 };
   std::vector<double> cl_y   =  { -178.82, -169.82, -158.03, -146.81, -133.26, -117.35, -93.156, -76.336, -56.4 };
@@ -140,60 +164,103 @@ bool NStepsKM::eval_f(Index n, const Number* x, bool new_x, Number& obj_value)
   int cl_idx_x0 = closest_x0 - dist_x0.begin();
   int cl_idx_x1 = closest_x1 - dist_x1.begin(); 
 
+=======
+  // init objective value f
+>>>>>>> 0ec4f0b04af58e6b3565ced81ecd5735613453a7
   obj_value = 0.0;
 
-  // position 0
-  obj_value += pow(x[0] - cl_x[cl_idx_x0], 2) + pow(x[2] - cl_y[cl_idx_x0], 2);
-  obj_value += pow(x[4] - cl_phi[cl_idx_x0], 2);
-  obj_value += pow(x[6] - v_ref, 2);
-  // position 1
-  // pay more attention on the second position tracking performance
-  obj_value += 10 * pow(x[1] - cl_x[cl_idx_x1], 2) + 10 * pow(x[3] - cl_y[cl_idx_x1], 2);
-  obj_value += 10 * pow(x[5] - cl_phi[cl_idx_x1], 2);
-  obj_value += pow(x[7] - v_ref, 2);
-  // actuators
-  obj_value += x[8] * x[8];
-  obj_value += x[9] * x[9];
+  // map info
+  std::vector<double> cl_x   =  { 287.39,  284.2,   279.97,  276.07,  271.63,  265.64,  257.88,  251.96,  245.37, 238.04,  236.1 };
+  std::vector<double> cl_y   =  { -178.82, -169.82, -158.03, -146.81, -133.26, -117.35, -93.156, -76.336, -56.4,  -35.048, -26.611 };
+  std::vector<double> cl_phi =  { 1.9603,  1.9115,  1.9174,  1.9027,  1.8878,  1.9306,  1.8812,  1.9093,  1.89,   1.9015,  1.7966 };
 
+  // for finding closest point
+  int sz = cl_x.size();
+  std::vector<double> dist(sz, 0.0);
+
+  for (int i = 0; i < N; i++) // totally N steps
+  {
+      for (int j = 0; j < sz; j++) // the waypoints size equals to sz
+      {
+          // the distances from point ( pos_X[i], pos_Y[i] ) to point sequence ( cl_x[j], cl_y[j] )
+          dist[j] = pow(cl_x[j] - x[x_st + i], 2) + pow(cl_y[j] - x[y_st + i], 2);
+      }
+
+      // find the index belongs to the smallest element
+      auto closest_pt = std::min_element( dist.begin(), dist.end() );
+      int closest_cl_idx = closest_pt - dist.begin();
+
+      /* assign the objective value f */
+      // states penalization
+      // (1) pos_X and pos_Y
+      obj_value += pow(x[x_st + i] - cl_x[closest_cl_idx], 2) + pow(x[y_st + i] - cl_y[closest_cl_idx], 2);
+      // (2) heading angle
+      obj_value += pow(x[phi_st + i] - cl_phi[closest_cl_idx], 2);
+      // (3) reference velocity
+      obj_value += pow(x[v_st + i] - v_ref, 2);
+      
+      // actuation penalization (ignore this step when i == N - 1)
+      if (i < N - 1)
+      { 
+        // (1) steering angle delta
+        obj_value += x[delta_st + i] * x[delta_st + i];
+        // (2) acceleration
+        obj_value += x[a_st + i] * x[a_st + i];
+      }
+  }
+  
   return true;
 }
 
-// Status: pending
+// Status: done
 // return the gradient of the objective function grad_{x} f(x)
 bool NStepsKM::eval_grad_f(Index n, const Number* x, bool new_x, Number* grad_f)
 {
-  assert(n == 10);
+  assert( n == (6 * N - 2) );
 
   // map info
-  std::vector<double> cl_x   =  { 287.39, 284.2, 279.97 };
-  std::vector<double> cl_y   =  { -178.82, -169.82, -158.03 };
-  std::vector<double> cl_phi =  { 1.9603, 1.9115, 1.9174 };
+  std::vector<double> cl_x   =  { 287.39,  284.2,   279.97,  276.07,  271.63,  265.64,  257.88,  251.96,  245.37, 238.04,  236.1 };
+  std::vector<double> cl_y   =  { -178.82, -169.82, -158.03, -146.81, -133.26, -117.35, -93.156, -76.336, -56.4,  -35.048, -26.611 };
+  std::vector<double> cl_phi =  { 1.9603,  1.9115,  1.9174,  1.9027,  1.8878,  1.9306,  1.8812,  1.9093,  1.89,   1.9015,  1.7966 };
 
-  // find closest point
-  std::vector<double> dist_x0(3, 0.0);
-  std::vector<double> dist_x1(3, 0.0);
-  for (int i = 0; i < 3; i++)
+  // for finding closest point
+  int sz = cl_x.size();
+  std::vector<double> dist(sz, 0.0);
+
+  for (int i = 0; i < N; i++) // totally N steps
   {
-    dist_x0[i] = pow(cl_x[i] - x[0], 2) + pow(cl_y[i] - x[2], 2);
-    dist_x1[i] = pow(cl_x[i] - x[1], 2) + pow(cl_y[i] - x[3], 2);
+      for (int j = 0; j < sz; j++) // the waypoints size equals to sz
+      {
+          // the distances from point ( pos_X[i], pos_Y[i] ) to point sequence ( cl_x[j], cl_y[j] )
+          dist[j] = pow(cl_x[j] - x[x_st + i], 2) + pow(cl_y[j] - x[y_st + i], 2);
+      }
+
+      // find the index belongs to the smallest element
+      auto closest_pt = std::min_element( dist.begin(), dist.end() );
+      int closest_cl_idx = closest_pt - dist.begin();
+
+      /* assign the objective value f */
+      // states penalization
+      // (1) pos_X and pos_Y
+      grad_f[x_st + i]   =  2 * ( x[x_st + i] - cl_x[closest_cl_idx] );
+      grad_f[y_st + i]   =  2 * ( x[y_st + i] - cl_y[closest_cl_idx] );
+      // (2) heading angle
+      grad_f[phi_st + i] =  2 * ( x[phi_st + i] - cl_phi[closest_cl_idx] );
+      // (3) reference velocity
+      grad_f[v_st + i]   =  2 * ( x[v_st + i] - v_ref );
+
+      // actuation penalization (ignore this step when i == N - 1)
+      if (i < N - 1)
+      {
+        // (1) steering angle delta
+        grad_f[delta_st + i] =  2 * x[delta_st + i];
+        // (2) acceleration
+        grad_f[a_st + i]     =  2 * x[a_st + i];
+      }
   }
-  auto closest_x0 = std::min_element( dist_x0.begin(), dist_x0.end() );
-  auto closest_x1 = std::min_element( dist_x1.begin(), dist_x1.end() );
-  int cl_idx_x0 = closest_x0 - dist_x0.begin();
-  int cl_idx_x1 = closest_x1 - dist_x1.begin(); 
-
-  grad_f[0] = 2 * ( x[0] - cl_x[cl_idx_x0] );
-  grad_f[1] = 2 * ( x[1] - cl_x[cl_idx_x1] ) * 10;
-  grad_f[2] = 2 * ( x[2] - cl_y[cl_idx_x0] );
-  grad_f[3] = 2 * ( x[3] - cl_y[cl_idx_x1] ) * 10;
-  grad_f[4] = 2 * ( x[4] - cl_phi[cl_idx_x0] );
-  grad_f[5] = 2 * ( x[5] - cl_phi[cl_idx_x1] ) * 10;
-  grad_f[6] = 2 * ( x[6] - v_ref );
-  grad_f[7] = 2 * ( x[7] - v_ref );
-  grad_f[8] = 2 * x[8];
-  grad_f[9] = 2 * x[9];
-
+  
   return true;
+
 }
 
 // Status: done
@@ -292,7 +359,6 @@ bool NStepsKM::eval_h(Index n, const Number* x, bool new_x,
                        bool new_lambda, Index nele_hess, Index* iRow,
                        Index* jCol, Number* values)
 {
-
   if (values == NULL) {
     // return the structure. This is a symmetric matrix, fill the lower left
     // triangle only.
