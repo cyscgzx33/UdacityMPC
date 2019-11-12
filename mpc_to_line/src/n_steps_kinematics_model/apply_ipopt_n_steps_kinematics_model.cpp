@@ -145,28 +145,7 @@ bool NStepsKM::eval_f(Index n, const Number* x, bool new_x, Number& obj_value)
 {
   assert( n == (6 * N - 2) );
 
-<<<<<<< HEAD
-  // map info
-  std::vector<double> cl_x   =  { 287.39,  284.2,   279.97,  276.07,  271.63,  265.64,  257.88,  251.96,  245.37 };
-  std::vector<double> cl_y   =  { -178.82, -169.82, -158.03, -146.81, -133.26, -117.35, -93.156, -76.336, -56.4 };
-  std::vector<double> cl_phi =  { 1.9603,  1.9115,  1.9174,  1.9027,  1.8878,  1.9306,  1.8812,  1.9093,  1.89 };
-
-  // find closest point
-  std::vector<double> dist_x0(3, 0.0);
-  std::vector<double> dist_x1(3, 0.0);
-  for (int i = 0; i < 3; i++)
-  {
-    dist_x0[i] = pow(cl_x[i] - x[0], 2) + pow(cl_y[i] - x[2], 2);
-    dist_x1[i] = pow(cl_x[i] - x[1], 2) + pow(cl_y[i] - x[3], 2);
-  }
-  auto closest_x0 = std::min_element( dist_x0.begin(), dist_x0.end() );
-  auto closest_x1 = std::min_element( dist_x1.begin(), dist_x1.end() );
-  int cl_idx_x0 = closest_x0 - dist_x0.begin();
-  int cl_idx_x1 = closest_x1 - dist_x1.begin(); 
-
-=======
   // init objective value f
->>>>>>> 0ec4f0b04af58e6b3565ced81ecd5735613453a7
   obj_value = 0.0;
 
   // map info
