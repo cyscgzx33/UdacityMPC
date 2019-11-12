@@ -53,7 +53,7 @@ bool NStepsKM::get_nlp_info(Index& n, Index& m, Index& nnz_jac_g,
   // TODO: modify it
   // the hessian is also dense and has 16 total nonzeros, but we
   // only need the lower left corner (since it is symmetric)
-  nnz_h_lag = 7 * N - 4; // (6 * N - 2) + ( 2 * (N - 1) ) 
+  nnz_h_lag = 8 * N - 4; // (6 * N - 2) + ( 2 * (N - 1) ) 
 
   // use the C style indexing (0-based)
   index_style = TNLP::C_STYLE;
@@ -123,9 +123,9 @@ bool NStepsKM::eval_f(Index n, const Number* x, bool new_x, Number& obj_value)
   assert( n == (6 * N - 2) );
 
   // map info
-  std::vector<double> cl_x   =  { 287.39, 284.2, 279.97 };
-  std::vector<double> cl_y   =  { -178.82, -169.82, -158.03 };
-  std::vector<double> cl_phi =  { 1.9603, 1.9115, 1.9174 };
+  std::vector<double> cl_x   =  { 287.39,  284.2,   279.97,  276.07,  271.63,  265.64,  257.88,  251.96,  245.37 };
+  std::vector<double> cl_y   =  { -178.82, -169.82, -158.03, -146.81, -133.26, -117.35, -93.156, -76.336, -56.4 };
+  std::vector<double> cl_phi =  { 1.9603,  1.9115,  1.9174,  1.9027,  1.8878,  1.9306,  1.8812,  1.9093,  1.89 };
 
   // find closest point
   std::vector<double> dist_x0(3, 0.0);
